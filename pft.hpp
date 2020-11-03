@@ -18,81 +18,88 @@
 // LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-//
-//
+
 #ifndef __PFT_H_
 #define __PFT_H_
 
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring> // for memset
 #include <iostream>
+#include <limits>
 #include <vector>
 
+#ifdef PFT_USE_ROOT
 #include <TLorentzVector.h>
 #include <TMath.h>
+#endif
 namespace pft {
 
 //////////////////////////////////////////////////
 // Particle struct
 //////////////////////////////////////////////////
-
+#if 0
 struct Particle {
   int pdg_id;
   double px, py, pz, e;
-  TLorentzVector pvec4;
+  TLorentzVector vec4;
   Particle() : pdg_id(0), px(0), py(0), pz(0), e(0)
   {
-    pvec4.SetPxPyPzE(0, 0, 0, 0);
+    vec4.SetPxPyPzE(0, 0, 0, 0);
   } // default constructor
 
   Particle(int _id, double _px, double _py, double _pz, double _e)
       : pdg_id(_id), px(_px), py(_py), pz(_pz), e(_e)
   {
-    pvec4.SetPxPyPzE(_px, _py, _pz, _e);
+    vec4.SetPxPyPzE(_px, _py, _pz, _e);
   }
 
-  Particle(const int &_id, const TLorentzVector &p) : pdg_id(_id), pvec4(p) {}
+  Particle(const int &_id, const TLorentzVector &p) : pdg_id(_id), vec4(p) {}
 
-  Particle(const Particle &x) : pdg_id(x.pdg_id), pvec4(x.pvec4) {}
+  Particle(const Particle &x) : pdg_id(x.pdg_id), vec4(x.vec4) {}
 
-  double DeltaPhi(const Particle &p) const { return pvec4.DeltaPhi(p.pvec4); }
-  double DeltaPhi(const TLorentzVector &v) const { return pvec4.DeltaPhi(v); }
+  double DeltaPhi(const Particle &p) const { return vec4.DeltaPhi(p.vec4); }
+  double DeltaPhi(const TLorentzVector &v) const { return vec4.DeltaPhi(v); }
 
-  double DeltaR(const Particle &p) const { return pvec4.DeltaR(p.pvec4); }
+  double DeltaR(const Particle &p) const { return vec4.DeltaR(p.vec4); }
 
   void clear()
   {
     pdg_id = 0;
-    pvec4 = {0, 0, 0, 0};
+    vec4 = {0, 0, 0, 0};
   }
 
   Particle operator+(const Particle &p) const
   {
-    return Particle(0, pvec4 + p.pvec4);
+    return Particle(0, vec4 + p.vec4);
   }
 
   Particle operator+(const TLorentzVector &v) const
   {
-    return Particle(0, pvec4 + v);
+    return Particle(0, vec4 + v);
   }
 
   bool operator==(const Particle &p) const
   {
-    return (pdg_id == p.pdg_id && pvec4 == p.pvec4);
+    return (pdg_id == p.pdg_id && vec4 == p.vec4);
   }
 
   bool operator!=(const Particle &p) const
   {
-    return (pdg_id != p.pdg_id || pvec4 != p.pvec4);
+    return (pdg_id != p.pdg_id || vec4 != p.vec4);
   }
   ~Particle()
   {
     pdg_id = 0;
-    pvec4.Clear();
+    vec4.Clear();
   }
 };
+#endif
 
+//////////////////////////////////////////////////
+// Maybe
+//////////////////////////////////////////////////
 template <typename T>
 struct Maybe {
   bool has_value;
@@ -110,6 +117,9 @@ struct Maybe {
   }
 };
 
+//////////////////////////////////////////////////
+// StringView
+//////////////////////////////////////////////////
 struct StringView {
   size_t count{0};
   const char *data{nullptr};
@@ -191,6 +201,75 @@ void print1(FILE *stream, StringView view)
   fwrite(view.data, 1, view.count, stream);
 }
 
+//////////////////////////////////////////////////
+// Matrix
+//////////////////////////////////////////////////
+
+template <typename T>
+struct Matrix1v {
+  size_t rows, cols;
+  std::vector<T> data;
+  Matrix1v() : rows(0), cols(0), data(rows * cols, 0) {}
+  Matrix1v(size_t r, size_t c) : rows(r), cols(c), data(rows * cols, 0) {}
+
+  T operator[](size_t i) const { return data.at(i); }
+
+  T &operator()(size_t i, size_t j) { return data.at(j + i * cols); }
+
+  const T &operator()(size_t i, size_t j) const
+  {
+    return data.at(j + i * cols);
+  }
+
+  T trace()
+  {
+    T tr = 0;
+    if (cols == rows) {
+      for (int i = 0; i < cols; i++) {
+        tr += ((*this)(i, i));
+      }
+      return tr;
+    }
+    else {
+      return std::numeric_limits<T>::quiet_NaN();
+    }
+  }
+
+  void transpose()
+  {
+    std::vector<T> tempv;
+    for (int i = 0; i < cols; i++) {
+      for (int j = 0; j < rows; j++) {
+        tempv.push_back((*this)(j, i));
+      }
+    }
+    std::swap(cols, rows);
+    data.clear();
+    data = tempv;
+  }
+};
+
+template <typename T>
+struct Matrix2v {
+  size_t rows, cols;
+  T **data;
+  Matrix2v(size_t r, size_t c) : rows(c), cols(c)
+  {
+    data = (T **)malloc(rows * sizeof(T *));
+    for (size_t i = 0; i < rows; i++) {
+      data[i] = (T *)malloc(cols * sizeof(int));
+    }
+    memset(*data, 0, (rows * cols) * sizeof(**data));
+  }
+
+  T *&operator[](size_t i) { return data[i]; }
+
+  const T *&operator[](size_t i) const { return data[i]; }
+
+  T &operator()(size_t i, size_t j) { return data[i][j]; }
+
+  const T &operator()(size_t i, size_t j) const { return data[i][j]; }
+};
 } // namespace pft
 
 #endif // __PFT_H_
