@@ -18,7 +18,6 @@
 // LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
 #ifndef __PFT_H_
 #define __PFT_H_
 
@@ -34,8 +33,8 @@
 #include <TLorentzVector.h>
 #include <TMath.h>
 #endif
-namespace pft {
 
+namespace pft {
 //////////////////////////////////////////////////
 // Particle struct
 //////////////////////////////////////////////////
@@ -107,8 +106,7 @@ struct Maybe {
 
   bool operator!=(const Maybe<T> &that) const { return !(*this == that); }
 
-  bool operator==(const Maybe<T> &that) const
-  {
+  bool operator==(const Maybe<T> &that) const {
     if (this->has_value && that.has_value) {
       return this->unwrap == that.unwrap;
     }
@@ -124,20 +122,17 @@ struct StringView {
   size_t count{0};
   const char *data{nullptr};
 
-  void chop(size_t n)
-  {
+  void chop(size_t n) {
     if (n > count) {
       data += count;
       count = 0;
-    }
-    else {
+    } else {
       data += n;
       count -= n;
     }
   }
 
-  StringView chop_by_delim(char delim)
-  {
+  StringView chop_by_delim(char delim) {
     assert(data);
 
     size_t i = 0;
@@ -150,8 +145,7 @@ struct StringView {
   }
 };
 
-auto split_by(StringView &sv, char delim)
-{
+auto split_by(StringView &sv, char delim) {
   std::vector<std::string> vec;
   size_t i = 0;
   while (i < sv.count) {
@@ -161,8 +155,7 @@ auto split_by(StringView &sv, char delim)
   return vec;
 }
 
-Maybe<StringView> read_file_as_string_view(const char *filename)
-{
+Maybe<StringView> read_file_as_string_view(const char *filename) {
   FILE *f = fopen(filename, "rb");
   if (!f)
     return {};
@@ -191,13 +184,11 @@ Maybe<StringView> read_file_as_string_view(const char *filename)
   return {true, {static_cast<size_t>(size), static_cast<const char *>(data)}};
 }
 
-void ignore_header_lines(std::vector<std::string> &vec, int lines)
-{
+void ignore_header_lines(std::vector<std::string> &vec, int lines) {
   vec.erase(vec.begin(), vec.begin() + lines);
 }
 
-void print1(FILE *stream, StringView view)
-{
+void print1(FILE *stream, StringView view) {
   fwrite(view.data, 1, view.count, stream);
 }
 
@@ -212,31 +203,25 @@ struct Matrix1v {
   Matrix1v() : rows(0), cols(0), data(rows * cols, 0) {}
   Matrix1v(size_t r, size_t c) : rows(r), cols(c), data(rows * cols, 0) {}
 
-  T operator[](size_t i) const { return data.at(i); }
-
   T &operator()(size_t i, size_t j) { return data.at(j + i * cols); }
 
-  const T &operator()(size_t i, size_t j) const
-  {
+  const T &operator()(size_t i, size_t j) const {
     return data.at(j + i * cols);
   }
 
-  T trace()
-  {
+  T trace() {
     T tr = 0;
     if (cols == rows) {
       for (int i = 0; i < cols; i++) {
         tr += ((*this)(i, i));
       }
       return tr;
-    }
-    else {
+    } else {
       return std::numeric_limits<T>::quiet_NaN();
     }
   }
 
-  void transpose()
-  {
+  void transpose() {
     std::vector<T> tempv;
     for (int i = 0; i < cols; i++) {
       for (int j = 0; j < rows; j++) {
@@ -252,23 +237,15 @@ struct Matrix1v {
 template <typename T>
 struct Matrix2v {
   size_t rows, cols;
-  T **data;
-  Matrix2v(size_t r, size_t c) : rows(c), cols(c)
-  {
-    data = (T **)malloc(rows * sizeof(T *));
-    for (size_t i = 0; i < rows; i++) {
-      data[i] = (T *)malloc(cols * sizeof(int));
-    }
-    memset(*data, 0, (rows * cols) * sizeof(**data));
+  T *data;
+  Matrix2v(size_t r, size_t c) : rows(c), cols(c) {
+    data = (T *)malloc(rows * cols * sizeof(T));
+    memset(data, 0, (rows * cols) * sizeof(*data));
   }
 
-  T *&operator[](size_t i) { return data[i]; }
+  T &operator()(size_t i, size_t j) { return data[j + i * cols]; }
 
-  const T *&operator[](size_t i) const { return data[i]; }
-
-  T &operator()(size_t i, size_t j) { return data[i][j]; }
-
-  const T &operator()(size_t i, size_t j) const { return data[i][j]; }
+  const T &operator()(size_t i, size_t j) const { return data[j + i * cols]; }
 };
 } // namespace pft
 
