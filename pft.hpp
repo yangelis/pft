@@ -188,6 +188,15 @@ void ignore_header_lines(std::vector<std::string> &vec, int lines) {
   vec.erase(vec.begin(), vec.begin() + lines);
 }
 
+std::vector<float> as_float(const std::vector<std::string> &vec) {
+  std::vector<float> buffer(vec.size());
+
+  for (size_t i = 0; i < vec.size(); ++i) {
+    buffer[i] = std::stof(vec[i]);
+  }
+  return buffer;
+}
+
 void print1(FILE *stream, StringView view) {
   fwrite(view.data, 1, view.count, stream);
 }
