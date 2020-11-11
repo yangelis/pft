@@ -28,6 +28,7 @@
 #include <iostream>
 #include <limits>
 #include <vector>
+#include <tuple>
 
 #ifdef PFT_USE_ROOT
 #include <TLorentzVector.h>
@@ -38,19 +39,14 @@ namespace pft {
 //////////////////////////////////////////////////
 // Particle struct
 //////////////////////////////////////////////////
-#if 0
 struct Particle {
   int pdg_id;
-  double px, py, pz, e;
+#ifdef PFT_USE_ROOT
   TLorentzVector vec4;
-  Particle() : pdg_id(0), px(0), py(0), pz(0), e(0)
-  {
-    vec4.SetPxPyPzE(0, 0, 0, 0);
-  } // default constructor
+  Particle() : pdg_id(0) { vec4.SetPxPyPzE(0, 0, 0, 0); } // default constructor
 
   Particle(int _id, double _px, double _py, double _pz, double _e)
-      : pdg_id(_id), px(_px), py(_py), pz(_pz), e(_e)
-  {
+      : pdg_id(_id) {
     vec4.SetPxPyPzE(_px, _py, _pz, _e);
   }
 
@@ -63,38 +59,42 @@ struct Particle {
 
   double DeltaR(const Particle &p) const { return vec4.DeltaR(p.vec4); }
 
-  void clear()
-  {
+  void clear() {
     pdg_id = 0;
     vec4 = {0, 0, 0, 0};
   }
 
-  Particle operator+(const Particle &p) const
-  {
+  Particle operator+(const Particle &p) const {
     return Particle(0, vec4 + p.vec4);
   }
 
-  Particle operator+(const TLorentzVector &v) const
-  {
+  Particle operator+(const TLorentzVector &v) const {
     return Particle(0, vec4 + v);
   }
 
-  bool operator==(const Particle &p) const
-  {
+  bool operator==(const Particle &p) const {
     return (pdg_id == p.pdg_id && vec4 == p.vec4);
   }
 
-  bool operator!=(const Particle &p) const
-  {
+  bool operator!=(const Particle &p) const {
     return (pdg_id != p.pdg_id || vec4 != p.vec4);
   }
-  ~Particle()
-  {
+
+  ~Particle() {
     pdg_id = 0;
     vec4.Clear();
   }
-};
+#else
+  // px, py, pz momenta and energy
+  double px, py, pz, e;
+
+  Particle()
+      : pdg_id(0), px(0.0), py(0.0), pz(0.0), e(0.0) {} // default constructor
+
+  Particle(int _id, double _px, double _py, double _pz, double _e)
+      : pdg_id(_id), px(_px), py(_py), pz(_pz), e(_e) {}
 #endif
+};
 
 //////////////////////////////////////////////////
 // Maybe
@@ -145,15 +145,23 @@ struct StringView {
   }
 };
 
-auto split_by(StringView &sv, char delim) {
+StringView operator""_sv(const char *data, size_t count) {
+  return {count, data};
+}
+
+std::vector<std::string> split_by(StringView &sv, char delim) {
   std::vector<std::string> vec;
-  size_t i = 0;
-  while (i < sv.count) {
-    auto aug = sv.chop_by_delim(delim);
+  StringView aug = {};
+  while (0 < sv.count) {
+    aug = sv.chop_by_delim(delim);
     vec.emplace_back(aug.data, aug.count);
   }
   return vec;
 }
+
+StringView cstr_as_sv(const char *cstr) { return {strlen(cstr), cstr}; }
+
+StringView string_as_sv(const std::string &s) { return {s.length(), s.data()}; }
 
 Maybe<StringView> read_file_as_string_view(const char *filename) {
   FILE *f = fopen(filename, "rb");
@@ -256,6 +264,33 @@ struct Matrix2v {
 
   const T &operator()(size_t i, size_t j) const { return data[j + i * cols]; }
 };
+
+
+//////////////////////////////////////////////////
+// Enumeration
+//////////////////////////////////////////////////
+// http://reedbeta.com/blog/python-like-enumerate-in-cpp17/
+template <typename T, typename TIter = decltype(std::begin(std::declval<T>())),
+          typename = decltype(std::end(std::declval<T>()))>
+constexpr auto enumerate(T &&iterable) {
+  struct iterator {
+    size_t i;
+    TIter iter;
+    bool operator!=(const iterator &other) const { return iter != other.iter; }
+    void operator++() {
+      ++i;
+      ++iter;
+    }
+    auto operator*() const { return std::tie(i, *iter); }
+  };
+  struct iterable_wrapper {
+    T iterable;
+    auto begin() { return iterator{0, std::begin(iterable)}; }
+    auto end() { return iterator{0, std::end(iterable)}; }
+  };
+  return iterable_wrapper{std::forward<T>(iterable)};
+}
+
 } // namespace pft
 
 #endif // __PFT_H_
