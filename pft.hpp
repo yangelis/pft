@@ -27,8 +27,8 @@
 #include <cstring> // for memset
 #include <iostream>
 #include <limits>
-#include <vector>
 #include <tuple>
+#include <vector>
 
 #ifdef PFT_USE_ROOT
 #include <TLorentzVector.h>
@@ -264,7 +264,6 @@ struct Matrix2v {
 
   const T &operator()(size_t i, size_t j) const { return data[j + i * cols]; }
 };
-
 
 //////////////////////////////////////////////////
 // Enumeration

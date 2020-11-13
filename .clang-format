@@ -10,6 +10,7 @@ AllowShortLoopsOnASingleLine        : false
 AlwaysBreakTemplateDeclarations     : true
 ReflowComments                      : false
 TabWidth                            : 4
+PointerAlignment                    : Right
 BraceWrapping:
   AfterClass            : false
   AfterControlStatement : false
