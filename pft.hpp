@@ -18,8 +18,8 @@
 // LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-#ifndef __PFT_H_
-#define __PFT_H_
+#ifndef PFT_H_
+#define PFT_H_
 
 #include <cassert>
 #include <cstdio>
@@ -159,6 +159,17 @@ std::vector<std::string> split_by(StringView &sv, char delim) {
   return vec;
 }
 
+std::vector<std::string> split_by(std::string &str, char delim) {
+  std::vector<std::string> vec;
+  StringView temp{str.size(), str.data()};
+  StringView aug = {};
+  while (0 < temp.count) {
+    aug = temp.chop_by_delim(delim);
+    vec.emplace_back(aug.data, aug.count);
+  }
+  return vec;
+}
+
 StringView cstr_as_sv(const char *cstr) { return {strlen(cstr), cstr}; }
 
 StringView string_as_sv(const std::string &s) { return {s.length(), s.data()}; }
@@ -292,4 +303,4 @@ constexpr auto enumerate(T &&iterable) {
 
 } // namespace pft
 
-#endif // __PFT_H_
+#endif // PFT_H_
