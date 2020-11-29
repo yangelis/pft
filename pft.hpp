@@ -140,7 +140,7 @@ struct StringView {
 
     size_t i = 0;
     while (i < count && data[i] != delim)
-      i++;
+      ++i;
     StringView result = {i, data};
     chop(i + 1);
 
@@ -243,7 +243,7 @@ struct Matrix1v {
   T trace() {
     T tr = 0;
     if (cols == rows) {
-      for (int i = 0; i < cols; i++) {
+      for (int i = 0; i < cols; ++i) {
         tr += ((*this)(i, i));
       }
       return tr;
@@ -254,8 +254,8 @@ struct Matrix1v {
 
   void transpose() {
     std::vector<T> tempv;
-    for (int i = 0; i < cols; i++) {
-      for (int j = 0; j < rows; j++) {
+    for (int i = 0; i < cols; ++i) {
+      for (int j = 0; j < rows; ++j) {
         tempv.push_back((*this)(j, i));
       }
     }
