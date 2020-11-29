@@ -27,6 +27,8 @@
 #include <cstring> // for memset
 #include <iostream>
 #include <limits>
+#include <map>
+#include <string>
 #include <tuple>
 #include <vector>
 
@@ -50,33 +52,33 @@ struct Particle {
     vec4.SetPxPyPzE(_px, _py, _pz, _e);
   }
 
-  Particle(const int &_id, const TLorentzVector &p) : pdg_id(_id), vec4(p) {}
+  Particle(const int& _id, const TLorentzVector& p) : pdg_id(_id), vec4(p) {}
 
-  Particle(const Particle &x) : pdg_id(x.pdg_id), vec4(x.vec4) {}
+  Particle(const Particle& x) : pdg_id(x.pdg_id), vec4(x.vec4) {}
 
-  double DeltaPhi(const Particle &p) const { return vec4.DeltaPhi(p.vec4); }
-  double DeltaPhi(const TLorentzVector &v) const { return vec4.DeltaPhi(v); }
+  double DeltaPhi(const Particle& p) const { return vec4.DeltaPhi(p.vec4); }
+  double DeltaPhi(const TLorentzVector& v) const { return vec4.DeltaPhi(v); }
 
-  double DeltaR(const Particle &p) const { return vec4.DeltaR(p.vec4); }
+  double DeltaR(const Particle& p) const { return vec4.DeltaR(p.vec4); }
 
   void clear() {
     pdg_id = 0;
     vec4 = {0, 0, 0, 0};
   }
 
-  Particle operator+(const Particle &p) const {
+  Particle operator+(const Particle& p) const {
     return Particle(0, vec4 + p.vec4);
   }
 
-  Particle operator+(const TLorentzVector &v) const {
+  Particle operator+(const TLorentzVector& v) const {
     return Particle(0, vec4 + v);
   }
 
-  bool operator==(const Particle &p) const {
+  bool operator==(const Particle& p) const {
     return (pdg_id == p.pdg_id && vec4 == p.vec4);
   }
 
-  bool operator!=(const Particle &p) const {
+  bool operator!=(const Particle& p) const {
     return (pdg_id != p.pdg_id || vec4 != p.vec4);
   }
 
@@ -96,6 +98,7 @@ struct Particle {
 #endif
 };
 
+// Maybe and StringView are base on https://github.com/rexim/aids
 //////////////////////////////////////////////////
 // Maybe
 //////////////////////////////////////////////////
@@ -104,9 +107,9 @@ struct Maybe {
   bool has_value;
   T unwrap;
 
-  bool operator!=(const Maybe<T> &that) const { return !(*this == that); }
+  bool operator!=(const Maybe<T>& that) const { return !(*this == that); }
 
-  bool operator==(const Maybe<T> &that) const {
+  bool operator==(const Maybe<T>& that) const {
     if (this->has_value && that.has_value) {
       return this->unwrap == that.unwrap;
     }
@@ -120,7 +123,7 @@ struct Maybe {
 //////////////////////////////////////////////////
 struct StringView {
   size_t count{0};
-  const char *data{nullptr};
+  const char* data{nullptr};
 
   void chop(size_t n) {
     if (n > count) {
@@ -145,11 +148,11 @@ struct StringView {
   }
 };
 
-StringView operator""_sv(const char *data, size_t count) {
+StringView operator""_sv(const char* data, size_t count) {
   return {count, data};
 }
 
-std::vector<std::string> split_by(StringView &sv, char delim) {
+std::vector<std::string> split_by(StringView& sv, char delim) {
   std::vector<std::string> vec;
   StringView aug = {};
   while (0 < sv.count) {
@@ -159,7 +162,7 @@ std::vector<std::string> split_by(StringView &sv, char delim) {
   return vec;
 }
 
-std::vector<std::string> split_by(std::string &str, char delim) {
+std::vector<std::string> split_by(std::string& str, char delim) {
   std::vector<std::string> vec;
   StringView temp{str.size(), str.data()};
   StringView aug = {};
@@ -170,12 +173,12 @@ std::vector<std::string> split_by(std::string &str, char delim) {
   return vec;
 }
 
-StringView cstr_as_sv(const char *cstr) { return {strlen(cstr), cstr}; }
+StringView cstr_as_sv(const char* cstr) { return {strlen(cstr), cstr}; }
 
-StringView string_as_sv(const std::string &s) { return {s.length(), s.data()}; }
+StringView string_as_sv(const std::string& s) { return {s.length(), s.data()}; }
 
-Maybe<StringView> read_file_as_string_view(const char *filename) {
-  FILE *f = fopen(filename, "rb");
+Maybe<StringView> read_file_as_string_view(const char* filename) {
+  FILE* f = fopen(filename, "rb");
   if (!f)
     return {};
 
@@ -200,14 +203,14 @@ Maybe<StringView> read_file_as_string_view(const char *filename) {
     return {};
 
   fclose(f);
-  return {true, {static_cast<size_t>(size), static_cast<const char *>(data)}};
+  return {true, {static_cast<size_t>(size), static_cast<const char*>(data)}};
 }
 
-void ignore_header_lines(std::vector<std::string> &vec, int lines) {
+void ignore_header_lines(std::vector<std::string>& vec, int lines) {
   vec.erase(vec.begin(), vec.begin() + lines);
 }
 
-std::vector<float> as_float(const std::vector<std::string> &vec) {
+std::vector<float> as_float(const std::vector<std::string>& vec) {
   std::vector<float> buffer(vec.size());
 
   for (size_t i = 0; i < vec.size(); ++i) {
@@ -216,7 +219,7 @@ std::vector<float> as_float(const std::vector<std::string> &vec) {
   return buffer;
 }
 
-void print1(FILE *stream, StringView view) {
+void print1(FILE* stream, StringView view) {
   fwrite(view.data, 1, view.count, stream);
 }
 
@@ -231,9 +234,9 @@ struct Matrix1v {
   Matrix1v() : rows(0), cols(0), data(rows * cols, 0) {}
   Matrix1v(size_t r, size_t c) : rows(r), cols(c), data(rows * cols, 0) {}
 
-  T &operator()(size_t i, size_t j) { return data.at(j + i * cols); }
+  T& operator()(size_t i, size_t j) { return data.at(j + i * cols); }
 
-  const T &operator()(size_t i, size_t j) const {
+  const T& operator()(size_t i, size_t j) const {
     return data.at(j + i * cols);
   }
 
@@ -265,15 +268,15 @@ struct Matrix1v {
 template <typename T>
 struct Matrix2v {
   size_t rows, cols;
-  T *data;
-  Matrix2v(size_t r, size_t c) : rows(c), cols(c) {
-    data = (T *)malloc(rows * cols * sizeof(T));
+  T* data;
+  Matrix2v(size_t r, size_t c) : rows(r), cols(c) {
+    data = (T*)malloc(rows * cols * sizeof(T));
     memset(data, 0, (rows * cols) * sizeof(*data));
   }
 
-  T &operator()(size_t i, size_t j) { return data[j + i * cols]; }
+  T& operator()(size_t i, size_t j) { return data[j + i * cols]; }
 
-  const T &operator()(size_t i, size_t j) const { return data[j + i * cols]; }
+  const T& operator()(size_t i, size_t j) const { return data[j + i * cols]; }
 };
 
 //////////////////////////////////////////////////
@@ -282,11 +285,11 @@ struct Matrix2v {
 // http://reedbeta.com/blog/python-like-enumerate-in-cpp17/
 template <typename T, typename TIter = decltype(std::begin(std::declval<T>())),
           typename = decltype(std::end(std::declval<T>()))>
-constexpr auto enumerate(T &&iterable) {
+constexpr auto enumerate(T&& iterable) {
   struct iterator {
     size_t i;
     TIter iter;
-    bool operator!=(const iterator &other) const { return iter != other.iter; }
+    bool operator!=(const iterator& other) const { return iter != other.iter; }
     void operator++() {
       ++i;
       ++iter;
@@ -301,6 +304,22 @@ constexpr auto enumerate(T &&iterable) {
   return iterable_wrapper{std::forward<T>(iterable)};
 }
 
+//////////////////////////////////////////////////
+// Utils
+//////////////////////////////////////////////////
+template <typename T, typename R, typename FoldOp>
+R foldl(const R& i, const std::vector<T>& xs, FoldOp fn) {
+  auto ret = i;
+  for (const auto& x : xs) {
+    ret = fn(ret, x);
+  }
+  return ret;
+}
+
+template <typename T>
+T sum(const std::vector<T>& xs) {
+  return foldl(T(), xs, [](const T& a, const T& b) -> T { return a + b; });
+}
 } // namespace pft
 
 #endif // PFT_H_

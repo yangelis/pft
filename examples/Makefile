@@ -1,8 +1,8 @@
-ROOTCXXFLAGS := `root-config --cflags`
+ROOTCXXFLAGS := $(shell root-config --cflags)
 CXXFLAGS :=-I../ -Wall -Wextra -Werror -pedantic -ggdb -O0
-LIBS := `root-config --ldflags --libs`
+LIBS := $(shell root-config --ldflags --libs)
 #LIBS := -L/home/john/Programs/root6.22/lib -lCore -lMathCore
-EXAMPLES := file2tree matrix_test csv
+EXAMPLES := file2tree matrix_test argparse
 
 .PHONY: all
 all: $(EXAMPLES)
@@ -13,8 +13,8 @@ file2tree: file2tree.cpp
 matrix_test: matrix_test.cpp
 	$(CXX) $(CXXFLAGS) $(ROOTCXXFLAGS) matrix_test.cpp -o matrix_test $(LIBS)
 
-csv: csv.cpp
-	$(CXX) $(CXXFLAGS) --std=c++17 csv.cpp -o csv
+argparse: argparse.cpp
+	$(CXX) $(CXXFLAGS) --std=c++17 argparse.cpp -o argparse
 
 .PHONY: clean
 clean:
