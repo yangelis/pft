@@ -28,7 +28,6 @@
 #include <deque>
 #include <iostream>
 #include <limits>
-#include <list>
 #include <map>
 #include <string>
 #include <tuple>
@@ -39,6 +38,125 @@
 #include <TMath.h>
 #endif
 
+namespace pft {
+// Maybe and StringView are base on https://github.com/rexim/aids
+//////////////////////////////////////////////////
+// Maybe
+//////////////////////////////////////////////////
+template <typename T>
+struct Maybe {
+  bool has_value;
+  T unwrap;
+
+  bool operator!=(const Maybe<T>& that) const { return !(*this == that); }
+
+  bool operator==(const Maybe<T>& that) const {
+    if (this->has_value && that.has_value) {
+      return this->unwrap == that.unwrap;
+    }
+
+    return !this->has_value && !that.has_value;
+  }
+};
+
+//////////////////////////////////////////////////
+// StringView
+//////////////////////////////////////////////////
+struct StringView {
+  size_t count{0};
+  const char* data{nullptr};
+
+  void chop(size_t n) {
+    if (n > count) {
+      data += count;
+      count = 0;
+    } else {
+      data += n;
+      count -= n;
+    }
+  }
+
+  StringView chop_by_delim(char delim) {
+    assert(data);
+
+    size_t i = 0;
+    while (i < count && data[i] != delim)
+      ++i;
+    StringView result = {i, data};
+    chop(i + 1);
+
+    return result;
+  }
+};
+
+StringView operator""_sv(const char* data, size_t count);
+
+std::vector<std::string> split_by(StringView& sv, char delim);
+StringView cstr_as_sv(const char* cstr);
+
+StringView string_as_sv(const std::string& s);
+
+Maybe<StringView> read_file_as_string_view(const char* filename);
+
+void ignore_header_lines(std::vector<std::string>& vec, int lines);
+
+std::vector<float> as_float(const std::vector<std::string>& vec);
+
+void print1(FILE* stream, StringView view);
+
+//////////////////////////////////////////////////
+// Particles struct usefull for Geant4
+//////////////////////////////////////////////////
+struct Particles_t {
+  std::vector<int> det_id;
+  std::vector<int> parent_id;
+  std::vector<int> trid;
+  std::vector<double> times;
+  std::vector<double> edep;
+  std::vector<double> energy;
+  std::vector<double> posX;
+  std::vector<double> posY;
+  std::vector<double> posZ;
+  std::vector<double> theta;
+  std::vector<double> phi;
+  std::vector<double> trlen;
+  std::vector<int> n_secondaries;
+
+  void Reserve(const size_t nparticles) {
+    det_id.reserve(nparticles);
+    parent_id.reserve(nparticles);
+    trid.reserve(nparticles);
+    times.reserve(nparticles);
+    edep.reserve(nparticles);
+    energy.reserve(nparticles);
+    posX.reserve(nparticles);
+    posY.reserve(nparticles);
+    posZ.reserve(nparticles);
+    theta.reserve(nparticles);
+    phi.reserve(nparticles);
+    trlen.reserve(nparticles);
+    n_secondaries.reserve(nparticles);
+  }
+
+  void ClearVecs() {
+    det_id.clear();
+    parent_id.clear();
+    trid.clear();
+    times.clear();
+    edep.clear();
+    energy.clear();
+    posX.clear();
+    posY.clear();
+    posZ.clear();
+    theta.clear();
+    phi.clear();
+    trlen.clear();
+    n_secondaries.clear();
+  }
+};
+} // namespace pft
+
+#ifdef PFT_IMPLEMENTATION
 namespace pft {
 //////////////////////////////////////////////////
 // Particle struct
@@ -100,56 +218,7 @@ struct Particle {
 #endif
 };
 
-// Maybe and StringView are base on https://github.com/rexim/aids
-//////////////////////////////////////////////////
-// Maybe
-//////////////////////////////////////////////////
-template <typename T>
-struct Maybe {
-  bool has_value;
-  T unwrap;
-
-  bool operator!=(const Maybe<T>& that) const { return !(*this == that); }
-
-  bool operator==(const Maybe<T>& that) const {
-    if (this->has_value && that.has_value) {
-      return this->unwrap == that.unwrap;
-    }
-
-    return !this->has_value && !that.has_value;
-  }
-};
-
-//////////////////////////////////////////////////
-// StringView
-//////////////////////////////////////////////////
-struct StringView {
-  size_t count{0};
-  const char* data{nullptr};
-
-  void chop(size_t n) {
-    if (n > count) {
-      data += count;
-      count = 0;
-    } else {
-      data += n;
-      count -= n;
-    }
-  }
-
-  StringView chop_by_delim(char delim) {
-    assert(data);
-
-    size_t i = 0;
-    while (i < count && data[i] != delim)
-      ++i;
-    StringView result = {i, data};
-    chop(i + 1);
-
-    return result;
-  }
-};
-
+// StringView utilities
 StringView operator""_sv(const char* data, size_t count) {
   return {count, data};
 }
@@ -228,7 +297,6 @@ void print1(FILE* stream, StringView view) {
 //////////////////////////////////////////////////
 // Matrix
 //////////////////////////////////////////////////
-
 template <typename T>
 struct Matrix1v {
   size_t rows, cols;
@@ -340,7 +408,7 @@ struct AParse {
   std::vector<Option> flags;
   std::map<std::string, std::pair<Option, std::string>> arg_table;
 
-  AParse(int i, char** a) : nArgs(i) {
+  AParse(int argc, char** a) : nArgs(argc) {
 
     for (size_t i = 0; i < nArgs; ++i) {
       args.push_back(a[i]);
@@ -390,6 +458,8 @@ struct AParse {
     }
   }
 };
+
 } // namespace pft
+#endif // PFT_IMPLEMENTATION
 
 #endif // PFT_H_
