@@ -25,8 +25,10 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring> // for memset
+#include <deque>
 #include <iostream>
 #include <limits>
+#include <list>
 #include <map>
 #include <string>
 #include <tuple>
@@ -320,6 +322,74 @@ template <typename T>
 T sum(const std::vector<T>& xs) {
   return foldl(T(), xs, [](const T& a, const T& b) -> T { return a + b; });
 }
+
+//////////////////////////////////////////////////
+// Arg Parse
+//////////////////////////////////////////////////
+struct Option {
+  std::string short_op;
+  std::string long_op;
+  std::string msg;
+  bool accepts_value;
+};
+
+struct AParse {
+  using Value = std::string;
+  size_t nArgs;
+  std::deque<char*> args;
+  std::vector<Option> flags;
+  std::map<std::string, std::pair<Option, std::string>> arg_table;
+
+  AParse(int i, char** a) : nArgs(i) {
+
+    for (size_t i = 0; i < nArgs; ++i) {
+      args.push_back(a[i]);
+    }
+  }
+
+  void PrintArgv() {
+    for (size_t i = 1; i < nArgs; ++i) {
+      // printf("%s\n", args[i]);
+    }
+  }
+
+  void Parse() {
+    if (nArgs == 1) {
+      PrintUsage();
+      return;
+    }
+
+    for (auto [i, arg] : ::pft::enumerate(args)) {
+      for (size_t j = 0; j < flags.size(); ++j) {
+        if (arg == flags[j].short_op || arg == flags[j].long_op) {
+          if (flags[j].accepts_value) {
+            if (i + 1 >= nArgs) {
+              fprintf(stderr, "Missing argument for flag `%s` \n", arg);
+              return;
+            } else {
+              arg_table.insert({flags[j].short_op, {flags[j], args[i + 1]}});
+              args.pop_front();
+            }
+          } else {
+            arg_table.insert({flags[j].short_op, {flags[j], ""}});
+            args.pop_front();
+            fprintf(stderr, "TODO: handle non-accepting value args\n");
+          }
+        }
+      }
+    }
+
+    // fprintf(stdout, "[DBG]: %zu\n", options.size());
+  }
+
+  void Add(Option opt) { flags.push_back(opt); }
+
+  void PrintUsage() {
+    for (auto& op : flags) {
+      std::cout << op.short_op << ", " << op.long_op << "\t:" << op.msg << '\n';
+    }
+  }
+};
 } // namespace pft
 
 #endif // PFT_H_
