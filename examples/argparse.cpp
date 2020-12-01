@@ -1,3 +1,4 @@
+#define PFT_IMPLEMENTATION
 #include "../pft.hpp"
 #include <iostream>
 #include <list>
@@ -11,14 +12,8 @@ int main(int argc, char* argv[]) {
 
   args.Parse();
 
-  auto t = args.arg_table.find("-f");
-
-  if (t != args.arg_table.end()) {
-    cout << "AYY LMAO\n";
-    cout << args.arg_table["-f"].second.c_str() << '\n';
-  } else {
-    cout << "PepeHands\n";
-  }
+  auto t = args.value_of("-f");
+  pft::println(stdout, t);
 
   return 0;
 }

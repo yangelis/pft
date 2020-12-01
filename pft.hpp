@@ -18,6 +18,14 @@
 // LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// ============================================================
+//
+// ChangeLog:
+//   0.0.1    Maybe<T>, StringView,
+//            Particles_t, Matrix
+//
+// ============================================================
+
 #ifndef PFT_H_
 #define PFT_H_
 
@@ -26,17 +34,31 @@
 #include <cstdlib>
 #include <cstring> // for memset
 #include <deque>
-#include <iostream>
 #include <limits>
 #include <map>
 #include <string>
-#include <tuple>
 #include <vector>
 
 #ifdef PFT_USE_ROOT
 #include <TLorentzVector.h>
 #include <TMath.h>
 #endif
+
+// Unsigned
+using u8 = uint8_t;
+using u16 = uint16_t;
+using u32 = uint32_t;
+using u64 = uint64_t;
+
+// Signed
+using i8 = int8_t;
+using i16 = int16_t;
+using i32 = int32_t;
+using i64 = int64_t;
+
+// Floating point
+using f32 = float;
+using f64 = double;
 
 namespace pft {
 // Maybe and StringView are base on https://github.com/rexim/aids
@@ -47,6 +69,10 @@ template <typename T>
 struct Maybe {
   bool has_value;
   T unwrap;
+
+  Maybe() : has_value(false) {}
+  Maybe(bool f, T& val) : has_value(f), unwrap(val) {}
+  Maybe(bool f, T&& val) : has_value(f), unwrap(std::move(val)) {}
 
   bool operator!=(const Maybe<T>& that) const { return !(*this == that); }
 
@@ -65,6 +91,12 @@ struct Maybe {
 struct StringView {
   size_t count{0};
   const char* data{nullptr};
+
+  StringView() : count(0), data(nullptr) {}
+  StringView(std::string&& s) : count(s.length()), data(std::move(s.data())) {}
+  StringView(const std::string& s) : count(s.length()), data(s.data()) {}
+  StringView(const char* s) : count(strlen(s)), data(s) {}
+  StringView(size_t l, const char* s) : count(l), data(s) {}
 
   void chop(size_t n) {
     if (n > count) {
@@ -92,6 +124,7 @@ struct StringView {
 StringView operator""_sv(const char* data, size_t count);
 
 std::vector<std::string> split_by(StringView& sv, char delim);
+
 StringView cstr_as_sv(const char* cstr);
 
 StringView string_as_sv(const std::string& s);
@@ -108,19 +141,19 @@ void print1(FILE* stream, StringView view);
 // Particles struct usefull for Geant4
 //////////////////////////////////////////////////
 struct Particles_t {
-  std::vector<int> det_id;
-  std::vector<int> parent_id;
-  std::vector<int> trid;
-  std::vector<double> times;
-  std::vector<double> edep;
-  std::vector<double> energy;
-  std::vector<double> posX;
-  std::vector<double> posY;
-  std::vector<double> posZ;
-  std::vector<double> theta;
-  std::vector<double> phi;
-  std::vector<double> trlen;
-  std::vector<int> n_secondaries;
+  std::vector<i32> det_id;
+  std::vector<i32> parent_id;
+  std::vector<i32> trid;
+  std::vector<f64> times;
+  std::vector<f64> edep;
+  std::vector<f64> energy;
+  std::vector<f64> posX;
+  std::vector<f64> posY;
+  std::vector<f64> posZ;
+  std::vector<f64> theta;
+  std::vector<f64> phi;
+  std::vector<f64> trlen;
+  std::vector<i32> n_secondaries;
 
   void Reserve(const size_t nparticles) {
     det_id.reserve(nparticles);
@@ -290,30 +323,67 @@ std::vector<float> as_float(const std::vector<std::string>& vec) {
   return buffer;
 }
 
+//////////////////////////////////////////////////
+// Printers
+//////////////////////////////////////////////////
+void print1(FILE* stream, char x) { fprintf(stream, "%c", x); }
+
+void print1(FILE* stream, u32 x) { fprintf(stream, "%u", x); }
+void print1(FILE* stream, u64 x) { fprintf(stream, "%lu", x); }
+// void print1(FILE* stream, size_t x) { fprintf(stream, "%zu", x); }
+
+void print1(FILE* stream, i16 x) { fprintf(stream, "%hd", x); }
+void print1(FILE* stream, i32 x) { fprintf(stream, "%d", x); }
+void print1(FILE* stream, i64 x) { fprintf(stream, "%ld", x); }
+
+void print1(FILE* stream, f32 f) { fprintf(stream, "%f", f); }
+void print1(FILE* stream, f64 f) { fprintf(stream, "%f", f); }
+
 void print1(FILE* stream, StringView view) {
   fwrite(view.data, 1, view.count, stream);
 }
 
+template <typename... Types>
+void println(FILE* stream, Types... args) {
+  (print1(stream, args), ...);
+  print1(stream, '\n');
+}
+
+// TODO: experimental Maybe printer
+template <typename T>
+void print1(FILE* stream, Maybe<T> m) {
+  println(stream, "Maybe{ ", m.has_value, ", ", m.unwrap, " }");
+}
 //////////////////////////////////////////////////
 // Matrix
 //////////////////////////////////////////////////
 template <typename T>
-struct Matrix1v {
+struct Matrix {
   size_t rows, cols;
-  std::vector<T> data;
-  Matrix1v() : rows(0), cols(0), data(rows * cols, 0) {}
-  Matrix1v(size_t r, size_t c) : rows(r), cols(c), data(rows * cols, 0) {}
+  T* data{nullptr};
 
-  T& operator()(size_t i, size_t j) { return data.at(j + i * cols); }
+  Matrix(size_t r, size_t c) : rows(r), cols(c) { data = new T[rows * cols](); }
+  Matrix(const Matrix<T>& m) : rows(m.rows), cols(m.cols), data(m.data) {}
+  Matrix(Matrix<T>&& m) : rows(m.rows), cols(m.cols), data(std::move(m.data)) {}
 
-  const T& operator()(size_t i, size_t j) const {
-    return data.at(j + i * cols);
+  T& operator()(size_t i, size_t j) { return data[j + i * cols]; }
+
+  const T& operator()(size_t i, size_t j) const { return data[j + i * cols]; }
+
+  void diagonal(T d = (T)1.0) {
+    for (size_t i = 0; i < rows; ++i) {
+      for (size_t j = 0; j < cols; ++j) {
+        if (i == j) {
+          (*this)(i, j) = d;
+        }
+      }
+    }
   }
 
   T trace() {
     T tr = 0;
     if (cols == rows) {
-      for (int i = 0; i < cols; ++i) {
+      for (size_t i = 0; i < cols; ++i) {
         tr += ((*this)(i, i));
       }
       return tr;
@@ -322,35 +392,31 @@ struct Matrix1v {
     }
   }
 
-  void transpose() {
-    std::vector<T> tempv;
-    for (int i = 0; i < cols; ++i) {
-      for (int j = 0; j < rows; ++j) {
-        tempv.push_back((*this)(j, i));
+  Matrix<T> transpose() {
+    Matrix<T> result(cols, rows);
+    for (size_t i = 0; i < cols; ++i) {
+      for (size_t j = 0; j < rows; ++j) {
+        result(i, j) = ((*this)(j, i));
       }
     }
-    std::swap(cols, rows);
-    data.clear();
-    data = tempv;
+    return result;
   }
 };
 
+// TODO: make pretty printer for matrices
 template <typename T>
-struct Matrix2v {
-  size_t rows, cols;
-  T* data;
-  Matrix2v(size_t r, size_t c) : rows(r), cols(c) {
-    data = (T*)malloc(rows * cols * sizeof(T));
-    memset(data, 0, (rows * cols) * sizeof(*data));
+void print1(FILE* stream, const Matrix<T>& mat) {
+  for (size_t i = 0; i < mat.rows; ++i) {
+    for (size_t j = 0; j < mat.cols; ++j) {
+      print1(stream, mat(i, j));
+      print1(stream, "  ");
+    }
+    fprintf(stream, "\n");
   }
-
-  T& operator()(size_t i, size_t j) { return data[j + i * cols]; }
-
-  const T& operator()(size_t i, size_t j) const { return data[j + i * cols]; }
-};
+}
 
 //////////////////////////////////////////////////
-// Enumeration
+// Utils
 //////////////////////////////////////////////////
 // http://reedbeta.com/blog/python-like-enumerate-in-cpp17/
 template <typename T, typename TIter = decltype(std::begin(std::declval<T>())),
@@ -374,9 +440,6 @@ constexpr auto enumerate(T&& iterable) {
   return iterable_wrapper{std::forward<T>(iterable)};
 }
 
-//////////////////////////////////////////////////
-// Utils
-//////////////////////////////////////////////////
 template <typename T, typename R, typename FoldOp>
 R foldl(const R& i, const std::vector<T>& xs, FoldOp fn) {
   auto ret = i;
@@ -454,7 +517,19 @@ struct AParse {
 
   void PrintUsage() {
     for (auto& op : flags) {
-      std::cout << op.short_op << ", " << op.long_op << "\t:" << op.msg << '\n';
+      println(stdout, op.short_op, ", ", op.long_op, "\t:", op.msg);
+    }
+  }
+
+  Maybe<std::string> value_of(std::string flag) {
+    // TODO: check if flag exist
+    auto val = arg_table.find(flag);
+
+    if (val != arg_table.end()) {
+      println(stdout, "[DBG]: ", val->second.second.c_str());
+      return {val->second.first.accepts_value, val->second.second};
+    } else {
+      return {false, ""};
     }
   }
 };
