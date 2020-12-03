@@ -2,25 +2,23 @@ CXXFLAGS      := -std=c++17 -I../ -Wall -Wextra -Werror -pedantic -ggdb -O0
 LIBS          :=
 ROOTCXXFLAGS  := $(shell root-config --cflags)
 ROOTLIBS      := $(shell root-config --ldflags --libs) -lCore -lMathCore
-EXAMPLES      := file2tree matrix_test argparse
+ROOTEXAMPLES  := file2tree
+EXAMPLES      := matrix_test argparse readfile
 
 .PHONY: all
-all: $(EXAMPLES)
+all: $(EXAMPLES) $(ROOTEXAMPLES)
 
-file2tree: file2tree.cpp
+$(EXAMPLES): %: %.cpp
 	@printf "# compiling $<\n"
-	$(CXX) $(CXXFLAGS) $(ROOTCXXFLAGS) file2tree.cpp -o file2tree $(ROOTLIBS)
+	$(CXX) $(CXXFLAGS)  $^ -o $@
 
-matrix_test: matrix_test.cpp
+$(ROOTEXAMPLES): %: %.cpp
 	@printf "# compiling $<\n"
-	$(CXX) $(CXXFLAGS) matrix_test.cpp -o matrix_test
-
-argparse: argparse.cpp
-	@printf "# compiling $<\n"
-	$(CXX) $(CXXFLAGS) argparse.cpp -o argparse
+	$(CXX) $(CXXFLAGS) $(ROOTCXXFLAGS) $^ -o $@ $(ROOTLIBS)
 
 .PHONY: clean
 clean:
 	@printf "Cleaning executables\n"
-	rm -f *.o $(EXAMPLES) 
+	rm -f *.o $(EXAMPLES)
+	rm -f *.o $(ROOTEXAMPLES)
 	rm -f *.root 

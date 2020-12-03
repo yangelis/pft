@@ -21,6 +21,7 @@
 // ============================================================
 //
 // ChangeLog:
+//   0.0.2    pop, drop, readlines
 //   0.0.1    Maybe<T>, StringView,
 //            Particles_t, Matrix
 //
@@ -308,6 +309,26 @@ Maybe<StringView> read_file_as_string_view(const char* filename) {
 
   fclose(f);
   return {true, {static_cast<size_t>(size), static_cast<const char*>(data)}};
+}
+
+std::vector<std::string> readlines(const char* filename,
+                                   const char delim = '\n') {
+
+  auto file = read_file_as_string_view(filename);
+  auto result = split_by(file.unwrap, delim);
+  return result;
+}
+
+template <typename T>
+void pop(std::vector<T>& vec, size_t elements) {
+  vec.erase(vec.begin(), vec.begin() + elements);
+}
+
+template <typename T>
+void drop(std::vector<T>& vec, size_t elements) {
+  for (size_t i = 0; i < elements; ++i) {
+    vec.pop_back();
+  }
 }
 
 void ignore_header_lines(std::vector<std::string>& vec, int lines) {
