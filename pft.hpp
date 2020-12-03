@@ -21,6 +21,7 @@
 // ============================================================
 //
 // ChangeLog:
+//   0.0.3    vec_from_range
 //   0.0.2    pop, drop, readlines
 //   0.0.1    Maybe<T>, StringView,
 //            Particles_t, Matrix
@@ -555,6 +556,22 @@ struct AParse {
   }
 };
 
+template <typename T>
+vector<T> vec_from_range(i64 low, i64 high) {
+  size_t elements = 0;
+  if (low < 0) {
+    elements = high - low + 1;
+  } else {
+    elements = high + low + 1;
+  }
+  vector<T> v(elements);
+  i64 i = low;
+  for (auto& x : v) {
+    x = (T)i;
+    ++i;
+  }
+  return v;
+}
 } // namespace pft
 #endif // PFT_IMPLEMENTATION
 
