@@ -9,7 +9,7 @@ jobs:
       - name: build
         run: |
           cd examples
-          make -B
+          make -B examples
           cd ../tests
           make -B
         env:
@@ -22,7 +22,7 @@ jobs:
       - name: build
         run: |
           cd examples
-          make -B
+          make -B examples
           cd ../tests
           make -B
         env:

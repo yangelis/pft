@@ -8,6 +8,9 @@ EXAMPLES      := matrix_test argparse readfile
 .PHONY: all
 all: $(EXAMPLES) $(ROOTEXAMPLES)
 
+.PHONY: examples
+examples: $(EXAMPLES)
+
 $(EXAMPLES): %: %.cpp
 	@printf "# compiling $<\n"
 	$(CXX) $(CXXFLAGS) $< -o $@
