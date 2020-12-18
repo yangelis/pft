@@ -21,6 +21,9 @@
 // ============================================================
 //
 // ChangeLog:
+//   0.0.5    map, take
+//   0.0.4    remove Particle,
+//            println for std::vector<T>
 //   0.0.3    vec_from_range
 //   0.0.2    pop, drop, readlines
 //   0.0.1    Maybe<T>, StringView,
@@ -31,6 +34,7 @@
 #ifndef PFT_H_
 #define PFT_H_
 
+#include <algorithm>
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
@@ -39,6 +43,7 @@
 #include <limits>
 #include <map>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #ifdef PFT_USE_ROOT
@@ -47,13 +52,13 @@
 #endif
 
 // Unsigned
-using u8 = uint8_t;
+using u8  = uint8_t;
 using u16 = uint16_t;
 using u32 = uint32_t;
 using u64 = uint64_t;
 
 // Signed
-using i8 = int8_t;
+using i8  = int8_t;
 using i16 = int16_t;
 using i32 = int32_t;
 using i64 = int64_t;
@@ -63,7 +68,7 @@ using f32 = float;
 using f64 = double;
 
 namespace pft {
-// Maybe and StringView are base on https://github.com/rexim/aids
+// Maybe and StringView are based on https://github.com/rexim/aids
 //////////////////////////////////////////////////
 // Maybe
 //////////////////////////////////////////////////
@@ -90,54 +95,35 @@ struct Maybe {
 //////////////////////////////////////////////////
 // StringView
 //////////////////////////////////////////////////
-struct StringView {
-  size_t count{0};
-  const char* data{nullptr};
+struct StringView : public std::string_view {
 
-  StringView() : count(0), data(nullptr) {}
-  StringView(std::string&& s) : count(s.length()), data(std::move(s.data())) {}
-  StringView(const std::string& s) : count(s.length()), data(s.data()) {}
-  StringView(const char* s) : count(strlen(s)), data(s) {}
-  StringView(size_t l, const char* s) : count(l), data(s) {}
+  StringView() : std::string_view("") {}
+  StringView(const std ::string& s) : std::string_view(s) {}
+  StringView(const std ::string_view& s) : std::string_view(s) {}
+  StringView(std ::string&& s) : std::string_view(std::move(s)) {}
+  StringView(std ::string_view&& s) : std::string_view(std::move(s)) {}
+  StringView(const char* s) : std::string_view(s) {}
+  StringView(const char* s, size_t l) : std::string_view(s, l) {}
 
-  void chop(size_t n) {
-    if (n > count) {
-      data += count;
-      count = 0;
+  StringView chop(size_t n) {
+    if (this->size() > n) {
+      return this->substr(n);
     } else {
-      data += n;
-      count -= n;
+      return {};
     }
   }
 
   StringView chop_by_delim(char delim) {
-    assert(data);
-
     size_t i = 0;
-    while (i < count && data[i] != delim)
+    while (i < this->size() && this->data()[i] != delim)
       ++i;
-    StringView result = {i, data};
-    chop(i + 1);
-
+    StringView result = {this->data(), i};
+    this->remove_prefix(i + 1);
     return result;
   }
+
+  std::string as_string() const { return std::string(*this); }
 };
-
-StringView operator""_sv(const char* data, size_t count);
-
-std::vector<std::string> split_by(StringView& sv, char delim);
-
-StringView cstr_as_sv(const char* cstr);
-
-StringView string_as_sv(const std::string& s);
-
-Maybe<StringView> read_file_as_string_view(const char* filename);
-
-void ignore_header_lines(std::vector<std::string>& vec, int lines);
-
-std::vector<float> as_float(const std::vector<std::string>& vec);
-
-void print1(FILE* stream, StringView view);
 
 //////////////////////////////////////////////////
 // Particles struct usefull for Geant4
@@ -191,99 +177,65 @@ struct Particles_t {
 };
 } // namespace pft
 
-#ifdef PFT_IMPLEMENTATION
 namespace pft {
-//////////////////////////////////////////////////
-// Particle struct
-//////////////////////////////////////////////////
-struct Particle {
-  int pdg_id;
-#ifdef PFT_USE_ROOT
-  TLorentzVector vec4;
-  Particle() : pdg_id(0) { vec4.SetPxPyPzE(0, 0, 0, 0); } // default constructor
-
-  Particle(int _id, double _px, double _py, double _pz, double _e)
-      : pdg_id(_id) {
-    vec4.SetPxPyPzE(_px, _py, _pz, _e);
-  }
-
-  Particle(const int& _id, const TLorentzVector& p) : pdg_id(_id), vec4(p) {}
-
-  Particle(const Particle& x) : pdg_id(x.pdg_id), vec4(x.vec4) {}
-
-  double DeltaPhi(const Particle& p) const { return vec4.DeltaPhi(p.vec4); }
-  double DeltaPhi(const TLorentzVector& v) const { return vec4.DeltaPhi(v); }
-
-  double DeltaR(const Particle& p) const { return vec4.DeltaR(p.vec4); }
-
-  void clear() {
-    pdg_id = 0;
-    vec4 = {0, 0, 0, 0};
-  }
-
-  Particle operator+(const Particle& p) const {
-    return Particle(0, vec4 + p.vec4);
-  }
-
-  Particle operator+(const TLorentzVector& v) const {
-    return Particle(0, vec4 + v);
-  }
-
-  bool operator==(const Particle& p) const {
-    return (pdg_id == p.pdg_id && vec4 == p.vec4);
-  }
-
-  bool operator!=(const Particle& p) const {
-    return (pdg_id != p.pdg_id || vec4 != p.vec4);
-  }
-
-  ~Particle() {
-    pdg_id = 0;
-    vec4.Clear();
-  }
-#else
-  // px, py, pz momenta and energy
-  double px, py, pz, e;
-
-  Particle()
-      : pdg_id(0), px(0.0), py(0.0), pz(0.0), e(0.0) {} // default constructor
-
-  Particle(int _id, double _px, double _py, double _pz, double _e)
-      : pdg_id(_id), px(_px), py(_py), pz(_pz), e(_e) {}
-#endif
-};
 
 // StringView utilities
 StringView operator""_sv(const char* data, size_t count) {
-  return {count, data};
+  return {data, count};
+}
+static inline StringView& trimr(StringView& s) {
+  auto i = s.find_last_not_of(" \t\n\r\f\v");
+  if (i != std::string_view::npos)
+    s = s.substr(0, i + 1);
+
+  return s;
 }
 
-std::vector<std::string> split_by(StringView& sv, char delim) {
-  std::vector<std::string> vec;
-  StringView aug = {};
-  while (0 < sv.count) {
-    aug = sv.chop_by_delim(delim);
-    vec.emplace_back(aug.data, aug.count);
+static inline StringView& triml(StringView& s) {
+  auto i = s.find_first_not_of(" \t\n\r\f\v");
+  if (i != std::string_view::npos)
+    s.remove_prefix(i);
+
+  return s;
+}
+
+static inline std::vector<StringView> split_by(StringView view, char delim) {
+  view = trimr(view);
+  std::vector<StringView> ret;
+  while (view.size() > 0) {
+    auto len = view.find(delim);
+    if (len == std::string_view::npos) {
+      ret.push_back(view);
+      break;
+    }
+    ret.push_back(view.substr(0, len));
+    view = view.substr(len + 1);
   }
-  return vec;
+  return ret;
 }
 
-std::vector<std::string> split_by(std::string& str, char delim) {
-  std::vector<std::string> vec;
-  StringView temp{str.size(), str.data()};
+static inline std::vector<StringView> split_by(std::string& str, char delim) {
+  std::vector<StringView> vec;
+  StringView temp{str.data(), str.size()};
   StringView aug = {};
-  while (0 < temp.count) {
+  while (0 < temp.size()) {
     aug = temp.chop_by_delim(delim);
-    vec.emplace_back(aug.data, aug.count);
+    vec.emplace_back(aug.data(), aug.size());
   }
   return vec;
 }
 
-StringView cstr_as_sv(const char* cstr) { return {strlen(cstr), cstr}; }
+static inline StringView cstr_as_sv(const char* cstr) {
+  return {cstr, strlen(cstr)};
+}
 
-StringView string_as_sv(const std::string& s) { return {s.length(), s.data()}; }
+static inline StringView string_as_sv(const std::string& s) {
+  return {s.data(), s.length()};
+}
 
-Maybe<StringView> read_file_as_string_view(const char* filename) {
+static inline i32 to_int(StringView s) { return std::stoi(std::string(s)); }
+
+static inline Maybe<StringView> read_file_as_string_view(const char* filename) {
   FILE* f = fopen(filename, "rb");
   if (!f)
     return {};
@@ -309,13 +261,13 @@ Maybe<StringView> read_file_as_string_view(const char* filename) {
     return {};
 
   fclose(f);
-  return {true, {static_cast<size_t>(size), static_cast<const char*>(data)}};
+  return {true, {static_cast<const char*>(data), static_cast<size_t>(size)}};
 }
 
-std::vector<std::string> readlines(const char* filename,
-                                   const char delim = '\n') {
+static inline std::vector<StringView> readlines(const char* filename,
+                                                const char delim = '\n') {
 
-  auto file = read_file_as_string_view(filename);
+  auto file   = read_file_as_string_view(filename);
   auto result = split_by(file.unwrap, delim);
   return result;
 }
@@ -332,15 +284,20 @@ void drop(std::vector<T>& vec, size_t elements) {
   }
 }
 
-void ignore_header_lines(std::vector<std::string>& vec, int lines) {
+template <typename T>
+static inline std::vector<T> take(std::vector<T>& vec, size_t elements) {
+  return {vec.begin(), vec.begin() + elements};
+}
+
+void ignore_header_lines(std::vector<StringView>& vec, int lines) {
   vec.erase(vec.begin(), vec.begin() + lines);
 }
 
-std::vector<float> as_float(const std::vector<std::string>& vec) {
+std::vector<float> as_floats(const std::vector<StringView>& vec) {
   std::vector<float> buffer(vec.size());
 
   for (size_t i = 0; i < vec.size(); ++i) {
-    buffer[i] = std::stof(vec[i]);
+    buffer[i] = std::stof(std::string(vec[i]));
   }
   return buffer;
 }
@@ -362,7 +319,7 @@ void print1(FILE* stream, f32 f) { fprintf(stream, "%f", f); }
 void print1(FILE* stream, f64 f) { fprintf(stream, "%f", f); }
 
 void print1(FILE* stream, StringView view) {
-  fwrite(view.data, 1, view.count, stream);
+  fwrite(view.data(), 1, view.size(), stream);
 }
 
 template <typename... Types>
@@ -375,6 +332,14 @@ void println(FILE* stream, Types... args) {
 template <typename T>
 void print1(FILE* stream, Maybe<T> m) {
   println(stream, "Maybe{ ", m.has_value, ", ", m.unwrap, " }");
+}
+
+template <typename T>
+void println(FILE* stream, std::vector<T> args) {
+  for (const auto& arg : args) {
+    print1(stream, arg);
+    print1(stream, '\n');
+  }
 }
 //////////////////////////////////////////////////
 // Matrix
@@ -472,14 +437,58 @@ R foldl(const R& i, const std::vector<T>& xs, FoldOp fn) {
 }
 
 template <typename T>
-T sum(const std::vector<T>& xs) {
+static inline T sum(const std::vector<T>& xs) {
   return foldl(T(), xs, [](const T& a, const T& b) -> T { return a + b; });
+}
+
+template <typename T>
+static inline T mean(const std::vector<T>& xs) {
+  return sum(xs) / (xs.size() - 1);
+}
+
+template <typename T>
+static inline T stdev(const std::vector<T>& xs) {
+  T a    = 0;
+  auto m = mean(xs);
+  std::for_each(std::begin(xs), std::end(xs),
+                [&](const T x) { a += (x - m) * (x - m); });
+
+  return sqrt(a / (xs.size() - 1));
+}
+template <typename T, typename Op>
+static inline auto map(Op fn, const std::vector<T>& input)
+    -> std::vector<decltype(fn(input[0]))> {
+
+  std::vector<decltype(fn(input[0]))> ret;
+  ret.reserve(input.size());
+  for (const auto& i : input) {
+    ret.push_back(fn(i));
+  }
+
+  return ret;
+}
+
+template <typename T>
+std::vector<T> vec_from_range(i64 low, i64 high) {
+  size_t elements = 0;
+  if (low < 0) {
+    elements = high - low + 1;
+  } else {
+    elements = high + low + 1;
+  }
+  std::vector<T> v(elements);
+  i64 i = low;
+  for (auto& x : v) {
+    x = (T)i;
+    ++i;
+  }
+  return v;
 }
 
 //////////////////////////////////////////////////
 // Arg Parse
 //////////////////////////////////////////////////
-struct Option {
+struct ArgOption {
   std::string short_op;
   std::string long_op;
   std::string msg;
@@ -490,8 +499,8 @@ struct AParse {
   using Value = std::string;
   size_t nArgs;
   std::deque<char*> args;
-  std::vector<Option> flags;
-  std::map<std::string, std::pair<Option, std::string>> arg_table;
+  std::vector<ArgOption> flags;
+  std::map<std::string, std::pair<ArgOption, std::string>> arg_table;
 
   AParse(int argc, char** a) : nArgs(argc) {
 
@@ -535,7 +544,7 @@ struct AParse {
     // fprintf(stdout, "[DBG]: %zu\n", options.size());
   }
 
-  void Add(Option opt) { flags.push_back(opt); }
+  void Add(ArgOption opt) { flags.push_back(opt); }
 
   void PrintUsage() {
     for (auto& op : flags) {
@@ -555,24 +564,6 @@ struct AParse {
     }
   }
 };
-
-template <typename T>
-vector<T> vec_from_range(i64 low, i64 high) {
-  size_t elements = 0;
-  if (low < 0) {
-    elements = high - low + 1;
-  } else {
-    elements = high + low + 1;
-  }
-  vector<T> v(elements);
-  i64 i = low;
-  for (auto& x : v) {
-    x = (T)i;
-    ++i;
-  }
-  return v;
-}
 } // namespace pft
-#endif // PFT_IMPLEMENTATION
 
 #endif // PFT_H_
