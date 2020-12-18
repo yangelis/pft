@@ -10,11 +10,11 @@ all: $(EXAMPLES) $(ROOTEXAMPLES)
 
 $(EXAMPLES): %: %.cpp
 	@printf "# compiling $<\n"
-	$(CXX) $(CXXFLAGS)  $^ -o $@
+	$(CXX) $(CXXFLAGS) $< -o $@
 
 $(ROOTEXAMPLES): %: %.cpp
 	@printf "# compiling $<\n"
-	$(CXX) $(CXXFLAGS) $(ROOTCXXFLAGS) $^ -o $@ $(ROOTLIBS)
+	$(CXX) $(CXXFLAGS) $(ROOTCXXFLAGS) $< -o $@ $(ROOTLIBS)
 
 .PHONY: clean
 clean:

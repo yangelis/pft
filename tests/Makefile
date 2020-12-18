@@ -5,4 +5,4 @@ test: testing
 	./testing
 
 testing: testing.cpp ../pft.hpp
-	$(CXX) $(CXXFLAGS) $^ -o $@
+	$(CXX) $(CXXFLAGS) $< -o $@

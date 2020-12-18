@@ -10,10 +10,11 @@ int main(int argc, char* argv[]) {
     exit(1);
   }
 
-  auto lines = pft::readlines(filename.unwrap.data);
+  auto lines = pft::readlines(filename.unwrap.data());
 
-  pft::pop(lines, 4);
-  pft::drop(lines, 4);
+  pft::println(stdout, lines);
+  // pft::pop(lines, 4);
+  // pft::drop(lines, 4);
 
   return 0;
 }

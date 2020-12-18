@@ -40,8 +40,8 @@ int main(int argc, char* argv[]) {
     fprintf(stderr, "No filename given!\n");
     exit(1);
   }
-  generate_file(filename.unwrap.data);
-  auto buffer = pft::read_file_as_string_view(filename.unwrap.data);
+  generate_file(filename.unwrap.data());
+  auto buffer = pft::read_file_as_string_view(filename.unwrap.data());
   if (!buffer.has_value) {
     fprintf(stderr, "Could not read file\n");
     exit(1);
@@ -50,7 +50,7 @@ int main(int argc, char* argv[]) {
   auto vec = split_by(buffer.unwrap, '\n');
   pft::ignore_header_lines(vec, 4);
 
-  auto buf = pft::as_float(vec);
+  auto buf = pft::as_floats(vec);
 
   TFile hfile("file.root", "RECREATE");
   auto myTree = createTree(buf);
