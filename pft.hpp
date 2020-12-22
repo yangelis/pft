@@ -21,7 +21,11 @@
 // ============================================================
 //
 // ChangeLog:
-//   0.0.5    map, take
+//   0.0.5    map, take, filter, var,
+//            arange, normalize, abs,
+//            zip, pad<vector>
+//            operators *,<, > for vector
+//            where, argsort
 //   0.0.4    remove Particle,
 //            println for std::vector<T>
 //   0.0.3    vec_from_range
@@ -67,6 +71,67 @@ using i64 = int64_t;
 using f32 = float;
 using f64 = double;
 
+//////////////////////////////////////////////////
+// Operators for vector<T>
+//////////////////////////////////////////////////
+template <typename T>
+std::vector<T> operator*(const T& elem, const std::vector<T>& rhs) {
+  std::vector<T> res(rhs.size(), 0);
+  for (size_t i = 0; i < rhs.size(); ++i) {
+    res[i] = elem * rhs[i];
+  }
+  return res;
+}
+
+template <typename T>
+std::deque<bool> operator<(const std::vector<T>& lhs, const T& elem) {
+  std::deque<bool> res(lhs.size());
+
+  for (size_t i = 0; i < lhs.size(); ++i) {
+    if (lhs[i] < elem) {
+      res[i] = 1;
+    } else {
+      res[i] = 0;
+    }
+  }
+  return res;
+}
+
+template <typename T>
+std::deque<bool> operator>(const T& elem, const std::vector<T>& rhs) {
+  return rhs < elem;
+}
+
+template <typename T>
+std::deque<bool> operator>(const std::vector<T>& lhs, const T& elem) {
+  std::deque<bool> res(lhs.size());
+
+  for (size_t i = 0; i < lhs.size(); ++i) {
+    if (lhs[i] > elem) {
+      res[i] = 1;
+    } else {
+      res[i] = 0;
+    }
+  }
+  return res;
+}
+
+template <typename T>
+std::deque<bool> operator<(const T& elem, const std::vector<T>& rhs) {
+  return rhs > elem;
+}
+
+template <typename T>
+std::deque<bool> operator==(const std::vector<T>& lhs, const T& elem) {
+  std::deque<bool> ret(lhs.size(), 1);
+
+  for (size_t i = 0; i < lhs.size(); ++i) {
+    if (lhs[i] != elem) {
+      ret[i] = 0;
+    }
+  }
+  return ret;
+}
 namespace pft {
 // Maybe and StringView are based on https://github.com/rexim/aids
 //////////////////////////////////////////////////
@@ -272,23 +337,6 @@ static inline std::vector<StringView> readlines(const char* filename,
   return result;
 }
 
-template <typename T>
-void pop(std::vector<T>& vec, size_t elements) {
-  vec.erase(vec.begin(), vec.begin() + elements);
-}
-
-template <typename T>
-void drop(std::vector<T>& vec, size_t elements) {
-  for (size_t i = 0; i < elements; ++i) {
-    vec.pop_back();
-  }
-}
-
-template <typename T>
-static inline std::vector<T> take(std::vector<T>& vec, size_t elements) {
-  return {vec.begin(), vec.begin() + elements};
-}
-
 void ignore_header_lines(std::vector<StringView>& vec, int lines) {
   vec.erase(vec.begin(), vec.begin() + lines);
 }
@@ -322,24 +370,40 @@ void print1(FILE* stream, StringView view) {
   fwrite(view.data(), 1, view.size(), stream);
 }
 
+template <typename T>
+void print1(FILE* stream, Maybe<T> m) {
+  print1(stream, "Maybe{ ");
+  print1(stream, m.has_value);
+  print1(stream, ", ");
+  print1(stream, m.unwrap);
+  print1(stream, " }");
+}
+
+template <typename T, typename U>
+void print1(FILE* stream, std::pair<T, U> pr) {
+  print1(stream, "(");
+  print1(stream, pr.first);
+  print1(stream, ", ");
+  print1(stream, pr.second);
+  print1(stream, ")");
+}
+
+template <typename T>
+void print1(FILE* stream, const std::vector<T>& v) {
+  const size_t n = v.size();
+  print1(stream, "{ ");
+  for (size_t i = 0; i < n - 1; ++i) {
+    print1(stream, v[i]);
+    print1(stream, ", ");
+  }
+  print1(stream, v[n - 1]);
+  print1(stream, " }");
+}
+
 template <typename... Types>
 void println(FILE* stream, Types... args) {
   (print1(stream, args), ...);
   print1(stream, '\n');
-}
-
-// TODO: experimental Maybe printer
-template <typename T>
-void print1(FILE* stream, Maybe<T> m) {
-  println(stream, "Maybe{ ", m.has_value, ", ", m.unwrap, " }");
-}
-
-template <typename T>
-void println(FILE* stream, std::vector<T> args) {
-  for (const auto& arg : args) {
-    print1(stream, arg);
-    print1(stream, '\n');
-  }
 }
 //////////////////////////////////////////////////
 // Matrix
@@ -427,6 +491,17 @@ constexpr auto enumerate(T&& iterable) {
   return iterable_wrapper{std::forward<T>(iterable)};
 }
 
+template <typename T, typename U>
+std::vector<std::pair<T, U>> zip(const std::vector<T>& a,
+                                 const std::vector<U>& b) {
+  std::vector<std::pair<T, U>> ret;
+
+  for (size_t i = 0; i < std::min(a.size(), b.size()); ++i) {
+    ret.emplace_back(a[i], b[i]);
+  }
+  return ret;
+}
+
 template <typename T, typename R, typename FoldOp>
 R foldl(const R& i, const std::vector<T>& xs, FoldOp fn) {
   auto ret = i;
@@ -442,18 +517,30 @@ static inline T sum(const std::vector<T>& xs) {
 }
 
 template <typename T>
-static inline T mean(const std::vector<T>& xs) {
-  return sum(xs) / (xs.size() - 1);
+static inline double mean(const std::vector<T>& xs) {
+  return double(sum(xs) / (xs.size()));
+}
+
+template <typename T>
+static inline T var(const std::vector<T>& xs) {
+  const size_t n = xs.size();
+  if (n < size_t(2)) {
+    return 0;
+  }
+  T sum_squares(0), squared_sum(0);
+  auto pred = [&sum_squares, &squared_sum](const T& x) {
+    sum_squares += x * x;
+    squared_sum += x;
+  };
+  std::for_each(xs.begin(), xs.end(), pred);
+  squared_sum *= squared_sum;
+  const auto dsize = (double)n;
+  return 1. / (dsize - 1.) * (sum_squares - squared_sum / dsize);
 }
 
 template <typename T>
 static inline T stdev(const std::vector<T>& xs) {
-  T a    = 0;
-  auto m = mean(xs);
-  std::for_each(std::begin(xs), std::end(xs),
-                [&](const T x) { a += (x - m) * (x - m); });
-
-  return sqrt(a / (xs.size() - 1));
+  return sqrt(var(xs));
 }
 template <typename T, typename Op>
 static inline auto map(Op fn, const std::vector<T>& input)
@@ -465,6 +552,65 @@ static inline auto map(Op fn, const std::vector<T>& input)
     ret.push_back(fn(i));
   }
 
+  return ret;
+}
+
+template <typename T, typename Op>
+std::vector<T> filter(Op&& fn, const std::vector<T>& v) {
+
+  const auto n = v.size();
+  std::vector<T> ret;
+  ret.reserve(n);
+  for (auto&& val : v) {
+    if (fn(val)) {
+      v.emplace_back(val);
+    }
+  }
+  return ret;
+}
+
+template <typename T>
+void pop(std::vector<T>& vec, size_t elements) {
+  vec.erase(vec.begin(), vec.begin() + elements);
+}
+
+template <typename T>
+void drop(std::vector<T>& vec, size_t elements) {
+  for (size_t i = 0; i < elements; ++i) {
+    vec.pop_back();
+  }
+}
+
+template <typename T>
+static inline std::vector<T> take(const std::vector<T>& vec, size_t elements) {
+  return {vec.begin(), vec.begin() + elements};
+}
+
+template <typename T>
+static inline std::vector<T> take(const std::vector<T>& vec,
+                                  const std::vector<int>& indices) {
+  const size_t n = indices.size();
+  std::vector<T> ret;
+  ret.reserve(n);
+
+  for (size_t i = 0; i < n; ++i) {
+    ret.push_back(vec[indices[i]]);
+  }
+  return ret;
+}
+
+template <typename T>
+static inline std::vector<T> take(const std::vector<T>& vec,
+                                  const std::deque<bool>& keep_index) {
+  const size_t n = keep_index.size();
+  std::vector<T> ret;
+  ret.reserve(n);
+
+  for (size_t i = 0; i < n; ++i) {
+    if (keep_index[i]) {
+      ret.push_back(vec[i]);
+    }
+  }
   return ret;
 }
 
@@ -483,6 +629,110 @@ std::vector<T> vec_from_range(i64 low, i64 high) {
     ++i;
   }
   return v;
+}
+
+template <typename T>
+static inline std::vector<T> arange(T start, T stop, T step = 1) {
+  std::vector<T> values;
+
+  if (step > 0) {
+    for (T value = start; value < stop; value += step) {
+      values.push_back(value);
+    }
+  } else {
+    for (T value = start; value > stop; value += step) {
+      values.push_back(value);
+    }
+  }
+  return values;
+}
+
+template <typename T>
+static inline std::vector<T> normalize(std::vector<T> vec) {
+  std::vector<T> values;
+  const size_t N = vec.size();
+  for (size_t i = 0; i < N; ++i) {
+    vec[i] /= (T)N;
+  }
+  return vec;
+}
+
+template <typename T>
+static inline std::vector<T> abs(std::vector<T>& vec) {
+  auto abs_lambda = [](auto x) { return std::abs(x); };
+  return map(abs_lambda, vec);
+}
+
+template <typename T>
+std::vector<T> pad(std::vector<T>& in, T pad_value = 0, int padwidth = 1) {
+  auto out_size = 2 * padwidth + in.size();
+  std::vector<T> out(out_size, pad_value);
+
+  for (size_t i = 0; i < in.size(); ++i) {
+    out[padwidth + i] = in[i];
+  }
+
+  return out;
+}
+
+template <typename T>
+std::vector<T> where(const std::deque<bool>& c, const std::vector<T>& v1,
+                     const std::vector<T>& v2) {
+  const size_t n = c.size();
+  std::vector<T> ret;
+  ret.reserve(n);
+  for (size_t i = 0; i < n; ++i) {
+    ret.emplace_back(c[i] != 0 ? v1[i] : v2[i]);
+  }
+
+  return ret;
+}
+
+template <typename T>
+std::vector<T> where(const std::deque<bool>& c, const std::vector<T>& v1,
+                     T v2) {
+  const size_t n = c.size();
+  std::vector<T> ret;
+  ret.reserve(n);
+  for (size_t i = 0; i < n; ++i) {
+    ret.emplace_back(c[i] != 0 ? v1[i] : v2);
+  }
+
+  return ret;
+}
+
+template <typename T>
+std::vector<T> where(const std::deque<bool>& c, T v1,
+                     const std::vector<T>& v2) {
+  const size_t n = c.size();
+  std::vector<T> ret;
+  ret.reserve(n);
+  for (size_t i = 0; i < n; ++i) {
+    ret.emplace_back(c[i] != 0 ? v1 : v2[i]);
+  }
+
+  return ret;
+}
+
+template <typename T>
+std::vector<T> where(const std::deque<bool>& c, T v1, T v2) {
+  const size_t n = c.size();
+  std::vector<T> ret;
+  ret.reserve(n);
+  for (size_t i = 0; i < n; ++i) {
+    ret.emplace_back(c[i] != 0 ? v1 : v2);
+  }
+
+  return ret;
+}
+
+template <typename T>
+std::vector<int> argsort(const std::vector<T>& xs) {
+  auto idx     = arange<int>(0, xs.size());
+  const auto f = [&xs](size_t i1, size_t i2) { return xs[i1] < xs[i2]; };
+  std::sort(idx.begin(), idx.end(), f);
+
+  return idx;
 }
 
 //////////////////////////////////////////////////
