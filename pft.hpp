@@ -563,7 +563,7 @@ std::vector<T> filter(Op&& fn, const std::vector<T>& v) {
   ret.reserve(n);
   for (auto&& val : v) {
     if (fn(val)) {
-      v.emplace_back(val);
+      ret.emplace_back(val);
     }
   }
   return ret;
