@@ -363,8 +363,8 @@ void print1(FILE* stream, i16 x) { fprintf(stream, "%hd", x); }
 void print1(FILE* stream, i32 x) { fprintf(stream, "%d", x); }
 void print1(FILE* stream, i64 x) { fprintf(stream, "%ld", x); }
 
-void print1(FILE* stream, f32 f) { fprintf(stream, "%f", f); }
-void print1(FILE* stream, f64 f) { fprintf(stream, "%f", f); }
+void print1(FILE* stream, f32 f) { fprintf(stream, "%8.3f", f); }
+void print1(FILE* stream, f64 f) { fprintf(stream, "%8.3f", f); }
 
 void print1(FILE* stream, StringView view) {
   fwrite(view.data(), 1, view.size(), stream);
@@ -413,13 +413,40 @@ struct Matrix {
   size_t rows, cols;
   T* data{nullptr};
 
-  Matrix(size_t r, size_t c) : rows(r), cols(c) { data = new T[rows * cols](); }
-  Matrix(const Matrix<T>& m) : rows(m.rows), cols(m.cols), data(m.data) {}
-  Matrix(Matrix<T>&& m) : rows(m.rows), cols(m.cols), data(std::move(m.data)) {}
+  Matrix() : rows(0), cols(0), data(nullptr) {}
+  Matrix(size_t r, size_t c) : rows(r), cols(c) { data = new T[r * c](); }
+  Matrix(const Matrix<T>& m) : rows(m.rows), cols(m.cols) {
+    data = new T[rows * cols]();
+    std::memcpy(data, m.data, sizeof(T) * rows * cols);
+  }
+  // Matrix(Matrix<T>&& m) : rows(m.rows), cols(m.cols), data(std::move(m.data)) {}
+  template <size_t r, size_t c>
+  Matrix(T (&m)[r][c]) : Matrix(r, c) {
+    for (size_t i = 0; i < rows; ++i) {
+      for (size_t j = 0; j < cols; ++j) {
+        (*this)(i, j) = m[i][j];
+      }
+    }
+  }
+
+  ~Matrix() { delete[] this->data; }
 
   T& operator()(size_t i, size_t j) { return data[j + i * cols]; }
+  T operator()(size_t i, size_t j) const { return data[j + i * cols]; }
 
-  const T& operator()(size_t i, size_t j) const { return data[j + i * cols]; }
+  Matrix<T>& operator=(const Matrix<T>& a) {
+    if (this == &a) {
+      return *this;
+    }
+    if (data != nullptr) {
+      delete[] data;
+    }
+    rows       = a.rows;
+    cols       = a.cols;
+    this->data = new T[rows * cols]();
+    std::memcpy(data, a.data, sizeof(T) * rows * cols);
+    return *this;
+  }
 
   void diagonal(T d = (T)1.0) {
     for (size_t i = 0; i < rows; ++i) {
@@ -451,6 +478,45 @@ struct Matrix {
       }
     }
     return result;
+  }
+
+  Matrix<T> mult(const Matrix<T>& b) {
+    if (cols != b.rows) {
+      exit(1);
+    }
+    Matrix<T> ret(rows, b.cols);
+    for (size_t i = 0; i < rows; ++i) {
+      for (size_t j = 0; j < b.cols; ++j) {
+        for (size_t k = 0; k < cols; ++k) {
+          ret(i, j) += ((*this)(i, k)) * b(k, j);
+        }
+      }
+    }
+    return ret;
+  }
+
+  std::vector<T> getColumn(size_t c) {
+    std::vector<T> ret;
+    ret.reserve(rows);
+    for (size_t i = 0; i < rows; ++i) {
+      ret.push_back((*this)(i, c));
+    }
+    return ret;
+  }
+
+  Matrix<T> minor(size_t d) {
+    Matrix<T> ret(rows, cols);
+    for (size_t i = 0; i < d; ++i) {
+      ret(i, i) = 1;
+    }
+
+    for (size_t i = d; i < rows; ++i) {
+      for (size_t j = d; j < cols; ++j) {
+        ret(i, j) = (*this)(i, j);
+      }
+    }
+
+    return ret;
   }
 };
 

@@ -1,4 +1,4 @@
-CXXFLAGS      := -std=c++17 -I../ -Wall -Wextra -Werror -pedantic -ggdb -O0
+CXXFLAGS      := -std=c++17 -I../ -Wall -Wextra -pedantic -ggdb -O0
 LIBS          :=
 ROOTCXXFLAGS  := $(shell root-config --cflags)
 ROOTLIBS      := $(shell root-config --ldflags --libs) -lCore -lMathCore

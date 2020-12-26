@@ -1,13 +1,13 @@
-#define PFT_IMPLEMENTATION
 #include "../pft.hpp"
+#include "../signal.hpp"
 #include <iostream>
 #include <random>
 
 using namespace std;
 
 int main() {
-  constexpr size_t N = 15;
-  constexpr size_t M = 15;
+  constexpr size_t N = 3;
+  constexpr size_t M = 3;
 
   random_device rd;
   mt19937 gen(rd());
@@ -20,10 +20,12 @@ int main() {
       matrix1(i, j) = dis(gen);
     }
   }
-  pft::println(stdout, "Transpose matrix\n", matrix1);
+  pft::println(stdout, "Random matrix\n", matrix1);
 
   auto mT = matrix1.transpose();
   pft::println(stdout, "Transpose matrix\n", mT);
+
+  pft::println(stdout, matrix1.mult(mT));
 
   constexpr size_t N2 = 10;
   constexpr size_t M2 = 10;
@@ -31,6 +33,20 @@ int main() {
   matrix2.diagonal();
 
   pft::println(stdout, "Diagonal matrix\n", matrix2);
+
+  double in[][3] = {
+      {12, -51, 4}, {6, 167, -68}, {-4, 24, -41}, {-1, 1, 0}, {2, 0, 3},
+  };
+
+  pft::Matrix<f64> mat_from_array(in);
+
+  pft::println(stdout, "From 2d array\n", mat_from_array);
+
+  auto [Q, R] = QRDecomposition(mat_from_array);
+
+  pft::println(stdout, "Q:\n", Q);
+  pft::println(stdout, "R:\n", R);
+  pft::println(stdout, "A=Q*R:\n", Q.mult(R));
 
   return 0;
 }
