@@ -21,6 +21,8 @@
 // ============================================================
 //
 // ChangeLog:
+//   0.0.6    mod, findfirst, findall,
+//            panic, unwrap_or_panic
 //   0.0.5    map, take, filter, var,
 //            arange, normalize, abs,
 //            zip, pad<vector>
@@ -194,19 +196,9 @@ struct StringView : public std::string_view {
 // Particles struct usefull for Geant4
 //////////////////////////////////////////////////
 struct Particles_t {
-  std::vector<i32> det_id;
-  std::vector<i32> parent_id;
-  std::vector<i32> trid;
-  std::vector<f64> times;
-  std::vector<f64> edep;
-  std::vector<f64> energy;
-  std::vector<f64> posX;
-  std::vector<f64> posY;
-  std::vector<f64> posZ;
-  std::vector<f64> theta;
-  std::vector<f64> phi;
-  std::vector<f64> trlen;
-  std::vector<i32> n_secondaries;
+  std::vector<i32> det_id, parent_id, trid, n_secondaries;
+  std::vector<f64> times, edep, energy, posX, posY, posZ;
+  std::vector<f64> theta, phi, trlen;
 
   void Reserve(const size_t nparticles) {
     det_id.reserve(nparticles);
@@ -240,9 +232,6 @@ struct Particles_t {
     n_secondaries.clear();
   }
 };
-} // namespace pft
-
-namespace pft {
 
 // StringView utilities
 StringView operator""_sv(const char* data, size_t count) {
@@ -404,6 +393,23 @@ template <typename... Types>
 void println(FILE* stream, Types... args) {
   (print1(stream, args), ...);
   print1(stream, '\n');
+}
+
+// stolen from https://github.com/rexim/aids/blob/master/aids.hpp
+template <typename... Args>
+[[noreturn]] void panic(Args... args) {
+  println(stderr, args...);
+  exit(1);
+}
+
+// stolen from https://github.com/rexim/aids/blob/master/aids.hpp
+template <typename T, typename... Args>
+T unwrap_or_panic(Maybe<T> maybe, Args... args) {
+  if (!maybe.has_value) {
+    panic(args...);
+  }
+
+  return maybe.unwrap;
 }
 //////////////////////////////////////////////////
 // Matrix
@@ -608,14 +614,15 @@ template <typename T>
 static inline T stdev(const std::vector<T>& xs) {
   return sqrt(var(xs));
 }
+
 template <typename T, typename Op>
-static inline auto map(Op fn, const std::vector<T>& input)
+static inline auto map(Op&& fn, const std::vector<T>& input)
     -> std::vector<decltype(fn(input[0]))> {
 
   std::vector<decltype(fn(input[0]))> ret;
   ret.reserve(input.size());
-  for (const auto& i : input) {
-    ret.push_back(fn(i));
+  for (const auto& x : input) {
+    ret.push_back(fn(x));
   }
 
   return ret;
@@ -880,6 +887,38 @@ struct AParse {
     }
   }
 };
+
+// sane mod function
+template <typename T>
+T mod(T a, T b) {
+  return (a % b + b) % b;
+}
+
+// return the index
+template <typename T, typename Op>
+Maybe<i64> findfirst(Op&& fn, const std::vector<T>& h) {
+  auto res = std::find(h.begin(), h.end(), fn);
+  if (res != h.end()) {
+    return {1, distance(h.begin(), res)};
+  } else {
+    return {0, -1};
+  }
+}
+
+// return the indices
+template <typename T, typename Op>
+std::vector<i64> findall(Op&& fn, const std::vector<T>& h) {
+  const auto n = h.size();
+  std::vector<i64> ret;
+  ret.reserve(n);
+  for (size_t i = 0; i < n; ++i) {
+    if (fn(h[i])) {
+      ret.emplace_back(i);
+    }
+  }
+  return ret;
+}
+
 } // namespace pft
 
 #endif // PFT_H_
