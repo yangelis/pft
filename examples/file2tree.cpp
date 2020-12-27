@@ -1,4 +1,3 @@
-#define PFT_IMPLEMENTATION
 #include "../pft.hpp"
 #include <iostream>
 #include <memory>
@@ -33,21 +32,15 @@ shared_ptr<TTree> createTree(vector<T>& vec) {
 }
 
 int main(int argc, char* argv[]) {
-  pft::Maybe<pft::StringView> filename;
-  if (argc > 1) {
-    filename = {true, argv[1]};
-  } else {
-    fprintf(stderr, "No filename given!\n");
-    exit(1);
+  if (argc == 1) {
+    pft::panic("No filename given!");
   }
-  generate_file(filename.unwrap.data());
-  auto buffer = pft::read_file_as_string_view(filename.unwrap.data());
-  if (!buffer.has_value) {
-    fprintf(stderr, "Could not read file\n");
-    exit(1);
-  }
+  auto filename = argv[1];
+  generate_file(filename);
+  auto buffer = pft::read_file_as_string_view(filename);
+  auto lines  = pft::unwrap_or_panic(buffer, "Could not read file");
 
-  auto vec = split_by(buffer.unwrap, '\n');
+  auto vec = split_by(lines, '\n');
   pft::ignore_header_lines(vec, 4);
 
   auto buf = pft::as_floats(vec);
