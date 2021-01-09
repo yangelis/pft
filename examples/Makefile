@@ -2,7 +2,7 @@ CXXFLAGS      := -std=c++17 -I../ -Wall -Wextra -pedantic -ggdb -O0
 LIBS          :=
 ROOTCXXFLAGS  := $(shell root-config --cflags)
 ROOTLIBS      := $(shell root-config --ldflags --libs) -lCore -lMathCore
-ROOTEXAMPLES  := file2tree
+ROOTEXAMPLES  := file2tree peak_finding
 EXAMPLES      := matrix_test argparse readfile
 
 .PHONY: all
