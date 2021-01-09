@@ -1,4 +1,4 @@
-// Copyright 2020 Ioannis Angelis <john_agelis@hotmail.com>
+// Copyright 2021 Ioannis Angelis <john_agelis@hotmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -21,6 +21,7 @@
 // ============================================================
 //
 // ChangeLog:
+//   0.0.7    linspace,
 //   0.0.6    mod, findfirst, findall,
 //            panic, unwrap_or_panic
 //   0.0.5    map, take, filter, var,
@@ -352,8 +353,8 @@ void print1(FILE* stream, i16 x) { fprintf(stream, "%hd", x); }
 void print1(FILE* stream, i32 x) { fprintf(stream, "%d", x); }
 void print1(FILE* stream, i64 x) { fprintf(stream, "%ld", x); }
 
-void print1(FILE* stream, f32 f) { fprintf(stream, "%8.3f", f); }
-void print1(FILE* stream, f64 f) { fprintf(stream, "%8.3f", f); }
+void print1(FILE* stream, f32 f) { fprintf(stream, "%8.4f", f); }
+void print1(FILE* stream, f64 f) { fprintf(stream, "%8.4f", f); }
 
 void print1(FILE* stream, StringView view) {
   fwrite(view.data(), 1, view.size(), stream);
@@ -380,13 +381,14 @@ void print1(FILE* stream, std::pair<T, U> pr) {
 template <typename T>
 void print1(FILE* stream, const std::vector<T>& v) {
   const size_t n = v.size();
-  print1(stream, "{ ");
+  fprintf(stream, "vector(size=%zu) ", v.size());
+  print1(stream, "{");
   for (size_t i = 0; i < n - 1; ++i) {
     print1(stream, v[i]);
     print1(stream, ", ");
   }
   print1(stream, v[n - 1]);
-  print1(stream, " }");
+  print1(stream, "}");
 }
 
 template <typename... Types>
@@ -419,15 +421,17 @@ struct Matrix {
   size_t rows, cols;
   T* data{nullptr};
 
-  Matrix() : rows(0), cols(0), data(nullptr) {}
-  Matrix(size_t r, size_t c) : rows(r), cols(c) { data = new T[r * c](); }
-  Matrix(const Matrix<T>& m) : rows(m.rows), cols(m.cols) {
+  constexpr Matrix() : rows(0), cols(0), data(nullptr) {}
+  constexpr Matrix(size_t r, size_t c) : rows(r), cols(c) {
+    data = new T[r * c]();
+  }
+  constexpr Matrix(const Matrix<T>& m) : rows(m.rows), cols(m.cols) {
     data = new T[rows * cols]();
     std::memcpy(data, m.data, sizeof(T) * rows * cols);
   }
   // Matrix(Matrix<T>&& m) : rows(m.rows), cols(m.cols), data(std::move(m.data)) {}
   template <size_t r, size_t c>
-  Matrix(T (&m)[r][c]) : Matrix(r, c) {
+  constexpr Matrix(T (&m)[r][c]) : Matrix(r, c) {
     for (size_t i = 0; i < rows; ++i) {
       for (size_t j = 0; j < cols; ++j) {
         (*this)(i, j) = m[i][j];
@@ -437,10 +441,12 @@ struct Matrix {
 
   ~Matrix() { delete[] this->data; }
 
-  T& operator()(size_t i, size_t j) { return data[j + i * cols]; }
-  T operator()(size_t i, size_t j) const { return data[j + i * cols]; }
+  constexpr T& operator()(size_t i, size_t j) { return data[j + i * cols]; }
+  constexpr T operator()(size_t i, size_t j) const {
+    return data[j + i * cols];
+  }
 
-  Matrix<T>& operator=(const Matrix<T>& a) {
+  constexpr Matrix<T>& operator=(const Matrix<T>& a) {
     if (this == &a) {
       return *this;
     }
@@ -454,7 +460,7 @@ struct Matrix {
     return *this;
   }
 
-  void diagonal(T d = (T)1.0) {
+  constexpr void diagonal(T d = (T)1.0) {
     for (size_t i = 0; i < rows; ++i) {
       for (size_t j = 0; j < cols; ++j) {
         if (i == j) {
@@ -464,7 +470,7 @@ struct Matrix {
     }
   }
 
-  T trace() {
+  constexpr T trace() const {
     T tr = 0;
     if (cols == rows) {
       for (size_t i = 0; i < cols; ++i) {
@@ -476,7 +482,7 @@ struct Matrix {
     }
   }
 
-  Matrix<T> transpose() {
+  constexpr Matrix<T> transpose() const {
     Matrix<T> result(cols, rows);
     for (size_t i = 0; i < cols; ++i) {
       for (size_t j = 0; j < rows; ++j) {
@@ -486,7 +492,7 @@ struct Matrix {
     return result;
   }
 
-  Matrix<T> mult(const Matrix<T>& b) {
+  constexpr Matrix<T> mult(const Matrix<T>& b) {
     if (cols != b.rows) {
       exit(1);
     }
@@ -501,7 +507,7 @@ struct Matrix {
     return ret;
   }
 
-  std::vector<T> getColumn(size_t c) {
+  constexpr std::vector<T> getColumn(size_t c) const {
     std::vector<T> ret;
     ret.reserve(rows);
     for (size_t i = 0; i < rows; ++i) {
@@ -510,7 +516,7 @@ struct Matrix {
     return ret;
   }
 
-  Matrix<T> minor(size_t d) {
+  constexpr Matrix<T> minor(size_t d) const {
     Matrix<T> ret(rows, cols);
     for (size_t i = 0; i < d; ++i) {
       ret(i, i) = 1;
@@ -593,21 +599,23 @@ static inline double mean(const std::vector<T>& xs) {
   return double(sum(xs) / (xs.size()));
 }
 
+// using the two pass formula
 template <typename T>
-static inline T var(const std::vector<T>& xs) {
+static inline double var(const std::vector<T>& xs) {
   const size_t n = xs.size();
   if (n < size_t(2)) {
+    fprintf(stderr, "Need atleast 2 elements for variance\n");
     return 0;
   }
-  T sum_squares(0), squared_sum(0);
-  auto pred = [&sum_squares, &squared_sum](const T& x) {
-    sum_squares += x * x;
-    squared_sum += x;
+  double sum_squares = 0.0, squared_sum = 0.0;
+  auto xs_mean = mean(xs);
+  auto pred    = [&sum_squares, &squared_sum, &xs_mean](const T& x) {
+    squared_sum += x - xs_mean;
+    sum_squares += (x - xs_mean) * (x - xs_mean);
   };
   std::for_each(xs.begin(), xs.end(), pred);
-  squared_sum *= squared_sum;
-  const auto dsize = (double)n;
-  return 1. / (dsize - 1.) * (sum_squares - squared_sum / dsize);
+  const auto N = (double)n;
+  return (sum_squares - squared_sum * squared_sum / N) / (N - 1);
 }
 
 template <typename T>
@@ -717,6 +725,53 @@ static inline std::vector<T> arange(T start, T stop, T step = 1) {
       values.push_back(value);
     }
   }
+  return values;
+}
+
+template <typename T>
+static inline std::vector<T> linspace(T start, T stop, size_t num = 50,
+                                      bool endpoint = true) {
+
+  if (num == 0) {
+    return std::vector<T>(1, 0);
+  }
+
+  if (num == 1) {
+    std::vector<T> values = {start};
+    return values;
+  }
+
+  if (endpoint) {
+    if (num == 2) {
+      std::vector<T> values = {start, stop};
+      return values;
+    }
+
+    std::vector<T> values(num, 0);
+    values[0]       = start;
+    values[num - 1] = stop;
+    const T step    = (stop - start) / static_cast<T>(num - 1);
+
+    for (size_t i = 1; i < num - 1; ++i) {
+      values[i] = start + static_cast<T>(i) * step;
+    }
+    return values;
+  }
+
+  if (num == 2) {
+    const T step          = (stop - start) / num;
+    std::vector<T> values = {start, start + step};
+    return values;
+  }
+  std::vector<T> values(num, 0);
+  values[0] = start;
+
+  const T step = (stop - start) / static_cast<T>(num);
+
+  for (size_t i = 1; i < num; ++i) {
+    values[i] = start + static_cast<T>(i) * step;
+  }
+
   return values;
 }
 

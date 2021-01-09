@@ -48,5 +48,12 @@ int main() {
   pft::println(stdout, "R:\n", R);
   pft::println(stdout, "A=Q*R:\n", Q.mult(R));
 
+  double arr2[][2] = {{4, 3}, {6, 3}};
+
+  pft::Matrix<f64> mat_for_lu(arr2);
+  LUdcmp lumat(mat_for_lu);
+
+  pft::println(stdout, lumat.lu);
+
   return 0;
 }
