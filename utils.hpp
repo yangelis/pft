@@ -2,18 +2,17 @@
 #define UTILS_H_
 #include "pft.hpp"
 #include <cmath>
-#include <iostream>
 
 using pft::Maybe;
-using namespace std;
 
-tuple<vector<double>, vector<int>, vector<int>>
-peak_prominences(const vector<double>& xs, const vector<int> peaks, int wlen) {
+std::tuple<std::vector<double>, std::vector<int>, std::vector<int>>
+peak_prominences(const std::vector<double>& xs, const std::vector<int> peaks,
+                 int wlen) {
   const size_t peaks_size = peaks.size();
 
-  vector<double> prominences(peaks_size);
-  vector<int> left_bases(peaks_size);
-  vector<int> right_bases(peaks_size);
+  std::vector<double> prominences(peaks_size);
+  std::vector<int> left_bases(peaks_size);
+  std::vector<int> right_bases(peaks_size);
 
   double left_min, right_min;
   int peak, i_min, i_max, i;
@@ -23,13 +22,13 @@ peak_prominences(const vector<double>& xs, const vector<int> peaks, int wlen) {
     i_max = xs.size() - 1;
 
     if (!(i_min <= peak && peak <= i_max)) {
-      cerr << "Oopsie\n";
+      fprintf(stderr, "Oopsie\n");
       exit(1);
     }
 
     if (2 <= wlen) {
-      i_min = max(peak - wlen / 2, i_min);
-      i_max = min(peak + wlen / 2, i_max);
+      i_min = std::max(peak - wlen / 2, i_min);
+      i_max = std::min(peak + wlen / 2, i_max);
     }
 
     i = left_bases[pi] = peak;
@@ -51,23 +50,24 @@ peak_prominences(const vector<double>& xs, const vector<int> peaks, int wlen) {
       }
       ++i;
     }
-    prominences[pi] = xs[peak] - max(left_min, right_min);
+    prominences[pi] = xs[peak] - std::max(left_min, right_min);
   }
-  return make_tuple(prominences, left_bases, right_bases);
+  return std::make_tuple(prominences, left_bases, right_bases);
 }
 
-tuple<vector<double>, vector<double>, vector<double>, vector<double>>
-peak_widths(const vector<double>& xs, const vector<int>& peaks,
+std::tuple<std::vector<double>, std::vector<double>, std::vector<double>,
+           std::vector<double>>
+peak_widths(const std::vector<double>& xs, const std::vector<int>& peaks,
             double rel_height) {
   const size_t peaks_size = peaks.size();
   const int wlen          = -1;
   assert(rel_height > 0);
   auto prom_data = peak_prominences(xs, peaks, wlen);
   auto [prominences, left_bases, right_bases] = prom_data;
-  vector<double> widths(peaks_size);
-  vector<double> width_heights(peaks_size);
-  vector<double> left_ips(peaks_size);
-  vector<double> right_ips(peaks_size);
+  std::vector<double> widths(peaks_size);
+  std::vector<double> width_heights(peaks_size);
+  std::vector<double> left_ips(peaks_size);
+  std::vector<double> right_ips(peaks_size);
 
   double height;
   int i_min, i_max, peak;
@@ -77,7 +77,7 @@ peak_widths(const vector<double>& xs, const vector<int>& peaks,
     i_max = right_bases[i];
     peak  = peaks[i];
     if (!(0 <= i_min && i_min <= peak && peak <= i_max && i_max < xs.size())) {
-      cerr << "Oopsie\n";
+      fprintf(stderr, "Oopsie\n");
       exit(1);
     }
     height           = xs[peak] - prominences[i] * rel_height;
@@ -108,15 +108,16 @@ peak_widths(const vector<double>& xs, const vector<int>& peaks,
     left_ips[i]  = left_ip;
     right_ips[i] = right_ip;
   }
-  return make_tuple(widths, width_heights, left_ips, right_ips);
+  return std::make_tuple(widths, width_heights, left_ips, right_ips);
 }
 
 template <typename T>
-tuple<vector<int>, vector<int>, vector<int>> local_maxima(vector<T> x) {
+std::tuple<std::vector<int>, std::vector<int>, std::vector<int>>
+local_maxima(std::vector<T> x) {
   const size_t n = x.size();
-  vector<int> midpoints(n / 2, 0);
-  vector<int> left_edges(n / 2, 0);
-  vector<int> right_edges(n / 2, 0);
+  std::vector<int> midpoints(n / 2, 0);
+  std::vector<int> left_edges(n / 2, 0);
+  std::vector<int> right_edges(n / 2, 0);
   size_t m = 0; // index pointer to the end
 
   size_t i   = 1;
@@ -148,8 +149,8 @@ tuple<vector<int>, vector<int>, vector<int>> local_maxima(vector<T> x) {
 }
 
 template <typename T>
-deque<bool> select_by_property(vector<T> p, T pmin, T pmax) {
-  deque<bool> keep(p.size(), 1);
+std::deque<bool> select_by_property(std::vector<T> p, T pmin, T pmax) {
+  std::deque<bool> keep(p.size(), 1);
 
   // if (pmin.has_value) {
   for (size_t i = 0; i < p.size(); ++i) {
@@ -166,23 +167,24 @@ deque<bool> select_by_property(vector<T> p, T pmin, T pmax) {
 }
 
 template <typename T>
-pair<double, double> unpack_condition_args(pair<T, T> interval,
-                                           vector<double> xs,
-                                           vector<int> peaks) {
+std::pair<double, double> unpack_condition_args(std::pair<T, T> interval,
+                                                std::vector<double> xs,
+                                                std::vector<int> peaks) {
 
   // TODO: implement unpacking for when T is a container
   auto [imin, imax] = interval;
 
-  return make_pair(imin, imax);
+  return std::make_pair(imin, imax);
 }
 
-deque<bool> select_peaks_by_distance(vector<int> peaks, vector<double> priority,
-                                     double distance) {
+std::deque<bool> select_peaks_by_distance(std::vector<int> peaks,
+                                          std::vector<double> priority,
+                                          double distance) {
 
   int peaks_size = peaks.size();
 
   distance = ceil(distance);
-  deque<bool> keep(peaks_size, 1);
+  std::deque<bool> keep(peaks_size, 1);
 
   auto priority_to_position = pft::argsort(priority);
   int j                     = 0;
@@ -207,9 +209,9 @@ deque<bool> select_peaks_by_distance(vector<int> peaks, vector<double> priority,
   return keep;
 }
 
-vector<int> find_peaks(const vector<double>& xs,
-                       Maybe<pair<double, double>> height,
-                       double distance = 0.0) {
+std::vector<int> find_peaks(const std::vector<double>& xs,
+                            Maybe<std::pair<double, double>> height,
+                            double distance = 0.0) {
   auto [peaks, l_edges, r_edges] = local_maxima(xs);
 
   if (height.has_value) {
@@ -227,6 +229,26 @@ vector<int> find_peaks(const vector<double>& xs,
   }
 
   return peaks;
+}
+
+template <typename T>
+T prod(const std::vector<T>& x) {
+  auto ret =
+      pft::foldl(T(1), x, [](const T& a, const T& b) -> T { return a * b; });
+  return ret;
+}
+
+double factorial(const i64& n) {
+  static double table[171];
+  static bool init = true;
+  if (init) {
+    init     = false;
+    table[0] = 1;
+    for (size_t i = 1; i < 171; ++i) {
+      table[i] = (double)i * table[i - 1];
+    }
+  }
+  return table[n];
 }
 
 template <typename T>
@@ -250,7 +272,6 @@ pft::Matrix<T> vandermonde(i64 halfWindow, i64 polyDeg) {
       V(i, j) = x[i] * V(i, j - 1);
     }
   }
-  pft::println(stdout, V);
 
   return V;
 }
@@ -267,23 +288,14 @@ pft::Matrix<T> SG(i64 halfWindow, i64 polyDeg) {
   auto SG = R / Q.transpose();
 
   auto n = SG.rows;
-  for(size_t i =0; i<n ; ++i){
-    // SG(i,:) *= factorial(i);
+  auto m = SG.cols;
+  for (size_t i = 0; i < n; ++i) {
+    for (size_t j = 0; j < m; ++j) {
+      SG(i, j) *= factorial(i);
+    }
   }
 
   return SG.transpoze();
-}
-
-template <typename T>
-T prod(const std::vector<T>& x) {
-  auto ret =
-      pft::foldl(T(1), x, [](const T& a, const T& b) -> T { return a * b; });
-  return ret;
-}
-template <typename T>
-T factorial(const T& n) {
-  auto ret = prod(pft::arange(T(1), n + T(1)));
-  return ret;
 }
 
 template <typename T>
@@ -381,6 +393,179 @@ QRDecomposition(const pft::Matrix<T>& mat) {
   R = Q.mult(mat);
 
   return {Q.transpose(), R};
+}
+
+struct LUdcmp {
+  using Mat_t = pft::Matrix<f64>;
+  size_t n;
+  Mat_t lu;
+  std::vector<int> indx;
+  f64 d;
+  LUdcmp(const Mat_t& a);
+  ~LUdcmp(){};
+  std::vector<f64> solve(const std::vector<f64>& b);
+  void solve(Mat_t& b, Mat_t& x);
+  void inverse(Mat_t& ainv);
+  // f64 det();
+};
+
+LUdcmp::LUdcmp(const Mat_t& a) : n(a.rows), lu(a), indx(n) {
+
+  constexpr f64 tiny = 1.0e-40;
+  size_t i, imax, j, k;
+  f64 big, temp;
+  std::vector<f64> vv(n, 0.0);
+  d = 1.0;
+  for (i = 0; i < n; ++i) {
+    big = 0.0;
+    for (j = 0; j < n; ++j) {
+      temp = std::abs(lu(i, j));
+      if (temp > big) {
+        big = temp;
+      }
+    }
+    vv[i] = 1.0 / big;
+  }
+
+  for (k = 0; k < n; ++k) {
+    big = 0.0;
+    for (i = k; i < n; ++i) {
+      temp = vv[i] * std::abs(lu(i, k));
+      if (temp > big) {
+        big  = temp;
+        imax = i;
+      }
+    }
+    if (k != imax) {
+      for (j = 0; j < n; ++j) {
+        temp        = lu(imax, j);
+        lu(imax, j) = lu(k, j);
+        lu(k, j)    = temp;
+      }
+      d        = -d;
+      vv[imax] = vv[k];
+    }
+    indx[k] = imax;
+    if (lu(k, k) == 0.0) {
+      lu(k, k) = tiny;
+    }
+    for (i = k + 1; i < n; ++i) {
+      lu(i, k) /= lu(k, k);
+      temp = lu(i, k);
+      for (j = k + 1; j < n; ++j) {
+        lu(i, j) -= temp * lu(k, j);
+      }
+    }
+  }
+}
+
+std::vector<f64> LUdcmp::solve(const std::vector<f64>& b) {
+  std::vector<f64> x(b);
+
+  size_t i, ii = 0, ip, j;
+  f64 sum;
+  if (b.size() != n || x.size() != n) {
+    fprintf(stderr, "Bad sizes\n");
+    exit(1);
+  }
+
+  for (i = 0; i < n; ++i) {
+    ip    = indx[i];
+    sum   = x[ip];
+    x[ip] = x[i];
+    if (ii != 0) {
+      for (j = ii - 1; j < i; ++j) {
+        sum -= lu(i, j) * x[j];
+      }
+    } else if (sum != 0.0) {
+      ii = i + 1;
+    }
+    x[i] = sum;
+  }
+
+  for (int i = n - 1; i >= 0; --i) {
+    sum = x[i];
+    for (j = i + 1; j < n; ++j) {
+      sum -= lu(i, j) * x[j];
+    }
+    x[i] = sum / lu(i, i);
+  }
+
+  return x;
+}
+
+void LUdcmp::solve(Mat_t& b, Mat_t& x) {
+  size_t i, m = b.cols;
+  std::vector<f64> xx(n);
+  for (size_t j = 0; j < m; ++j) {
+    for (i = 0; i < n; ++i) {
+      xx[i] = b(i, j);
+    }
+    xx = solve(xx);
+    for (i = 0; i < n; ++i) {
+      x(i, j) = xx[i];
+    }
+  }
+}
+
+void LUdcmp::inverse(Mat_t& ainv) {
+  ainv = Mat_t(n, n);
+  ainv.diagonal();
+  solve(ainv, ainv);
+}
+
+// Savitzky-Golay Coeffs for 1-D filter
+// np: n points, must be an odd number
+// nl, nr: n points to left and right
+// ld: order of the derivative, default = 0 (no derivation)
+// m: order of the polynomial
+std::vector<f64> savgol_coeffs(const int np, const int nl, const int nr,
+                               const int ld, const int m) {
+
+  if (np < nl + nr + 1 || nr < 0 || nr < 0 || ld > m || nl + nr < m) {
+    fprintf(stderr, "Bad arguments\n");
+    exit(1);
+  }
+
+  int k, mm, imj, kk;
+  f64 sum, fac;
+  std::vector<int> indx(m + 1);
+  pft::Matrix<f64> a(m + 1, m + 1);
+
+  for (int ipj = 0; ipj <= (m << 1); ++ipj) {
+    sum = (ipj ? 0.0 : 1.0);
+    for (k = 1; k <= nr; ++k) {
+      sum += std::pow((f64)k, (f64)ipj);
+    }
+    for (k = 1; k <= nr; ++k) {
+      sum += std::pow((f64)(-k), (f64)ipj);
+    }
+
+    mm = std::min(ipj, 2 * m - ipj);
+    for (imj = -mm; imj <= mm; imj += 2) {
+      a((ipj + imj) / 2, (ipj - imj) / 2) = sum;
+    }
+  }
+  LUdcmp alud(a);
+  std::vector<f64> b(m + 1, 0.0);
+  b[ld] = 1.0;
+  b     = alud.solve(b);
+
+  size_t i = 0;
+  std::vector<f64> c(np, 0.0);
+  for (k = -nl; k <= nr; ++k) {
+    sum = b[0];
+    fac = 1.0;
+    for (mm = 1; mm <= m; ++mm) {
+      fac *= k;
+      sum += b[mm] * fac;
+    }
+    // kk    = (np - k) % np; // beware of c++ modulo
+    // c[kk] = sum;
+    c[i++] = sum;
+  }
+
+  return c;
 }
 
 #endif // UTILS_H_
