@@ -1,4 +1,3 @@
-#define PFT_IMPLEMENTATION
 #include "../pft.hpp"
 #include <iostream>
 #include <list>

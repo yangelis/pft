@@ -21,7 +21,9 @@
 // ============================================================
 //
 // ChangeLog:
-//   0.0.7    linspace,
+//   0.0.7    linspace, pad_left, pad_right
+//            zip_with, zip_to_pair
+//            remove zip
 //   0.0.6    mod, findfirst, findall,
 //            panic, unwrap_or_panic
 //   0.0.5    map, take, filter, var,
@@ -166,10 +168,10 @@ struct Maybe {
 struct StringView : public std::string_view {
 
   StringView() : std::string_view("") {}
-  StringView(const std ::string& s) : std::string_view(s) {}
-  StringView(const std ::string_view& s) : std::string_view(s) {}
-  StringView(std ::string&& s) : std::string_view(std::move(s)) {}
-  StringView(std ::string_view&& s) : std::string_view(std::move(s)) {}
+  StringView(const std::string& s) : std::string_view(s) {}
+  StringView(const std::string_view& s) : std::string_view(s) {}
+  StringView(std::string&& s) : std::string_view(std::move(s)) {}
+  StringView(std::string_view&& s) : std::string_view(s) {}
   StringView(const char* s) : std::string_view(s) {}
   StringView(const char* s, size_t l) : std::string_view(s, l) {}
 
@@ -183,8 +185,9 @@ struct StringView : public std::string_view {
 
   StringView chop_by_delim(char delim) {
     size_t i = 0;
-    while (i < this->size() && this->data()[i] != delim)
+    while (i < this->size() && this->data()[i] != delim) {
       ++i;
+    }
     StringView result = {this->data(), i};
     this->remove_prefix(i + 1);
     return result;
@@ -235,21 +238,23 @@ struct Particles_t {
 };
 
 // StringView utilities
-StringView operator""_sv(const char* data, size_t count) {
+static StringView operator""_sv(const char* data, size_t count) {
   return {data, count};
 }
 static inline StringView& trimr(StringView& s) {
   auto i = s.find_last_not_of(" \t\n\r\f\v");
-  if (i != std::string_view::npos)
+  if (i != std::string_view::npos) {
     s = s.substr(0, i + 1);
+  }
 
   return s;
 }
 
 static inline StringView& triml(StringView& s) {
   auto i = s.find_first_not_of(" \t\n\r\f\v");
-  if (i != std::string_view::npos)
+  if (i != std::string_view::npos) {
     s.remove_prefix(i);
+  }
 
   return s;
 }
@@ -257,13 +262,13 @@ static inline StringView& triml(StringView& s) {
 static inline std::vector<StringView> split_by(StringView view, char delim) {
   view = trimr(view);
   std::vector<StringView> ret;
-  while (view.size() > 0) {
+  while (!view.empty()) {
     auto len = view.find(delim);
     if (len == std::string_view::npos) {
       ret.push_back(view);
       break;
     }
-    ret.push_back(view.substr(0, len));
+    ret.emplace_back(view.substr(0, len));
     view = view.substr(len + 1);
   }
   return ret;
@@ -273,7 +278,7 @@ static inline std::vector<StringView> split_by(std::string& str, char delim) {
   std::vector<StringView> vec;
   StringView temp{str.data(), str.size()};
   StringView aug = {};
-  while (0 < temp.size()) {
+  while (!temp.empty()) {
     aug = temp.chop_by_delim(delim);
     vec.emplace_back(aug.data(), aug.size());
   }
@@ -292,28 +297,34 @@ static inline i32 to_int(StringView s) { return std::stoi(std::string(s)); }
 
 static inline Maybe<StringView> read_file_as_string_view(const char* filename) {
   FILE* f = fopen(filename, "rb");
-  if (!f)
+  if (f == nullptr) {
     return {};
+  }
 
   int err = fseek(f, 0, SEEK_END);
-  if (err < 0)
+  if (err < 0) {
     return {};
+  }
 
   long size = ftell(f);
-  if (size < 0)
+  if (size < 0) {
     return {};
+  }
 
   err = fseek(f, 0, SEEK_SET);
-  if (err < 0)
+  if (err < 0) {
     return {};
+  }
 
   auto data = malloc(size);
-  if (!data)
+  if (data == nullptr) {
     return {};
+  }
 
   size_t read_size = fread(data, 1, size, f);
-  if (read_size != (size_t)size && ferror(f))
+  if (read_size != (size_t)size && ferror(f) != 0) {
     return {};
+  }
 
   fclose(f);
   return {true, {static_cast<const char*>(data), static_cast<size_t>(size)}};
@@ -327,11 +338,12 @@ static inline std::vector<StringView> readlines(const char* filename,
   return result;
 }
 
-void ignore_header_lines(std::vector<StringView>& vec, int lines) {
+static inline void ignore_header_lines(std::vector<StringView>& vec,
+                                       int lines) {
   vec.erase(vec.begin(), vec.begin() + lines);
 }
 
-std::vector<float> as_floats(const std::vector<StringView>& vec) {
+static inline std::vector<float> as_floats(const std::vector<StringView>& vec) {
   std::vector<float> buffer(vec.size());
 
   for (size_t i = 0; i < vec.size(); ++i) {
@@ -343,25 +355,25 @@ std::vector<float> as_floats(const std::vector<StringView>& vec) {
 //////////////////////////////////////////////////
 // Printers
 //////////////////////////////////////////////////
-void print1(FILE* stream, char x) { fprintf(stream, "%c", x); }
+static inline void print1(FILE* stream, char x) { fprintf(stream, "%c", x); }
 
-void print1(FILE* stream, u32 x) { fprintf(stream, "%u", x); }
-void print1(FILE* stream, u64 x) { fprintf(stream, "%lu", x); }
-// void print1(FILE* stream, size_t x) { fprintf(stream, "%zu", x); }
+static inline void print1(FILE* stream, u32 x) { fprintf(stream, "%u", x); }
+static inline void print1(FILE* stream, u64 x) { fprintf(stream, "%lu", x); }
+// static inline void print1(FILE* stream, size_t x) { fprintf(stream, "%zu", x); }
 
-void print1(FILE* stream, i16 x) { fprintf(stream, "%hd", x); }
-void print1(FILE* stream, i32 x) { fprintf(stream, "%d", x); }
-void print1(FILE* stream, i64 x) { fprintf(stream, "%ld", x); }
+static inline void print1(FILE* stream, i16 x) { fprintf(stream, "%hd", x); }
+static inline void print1(FILE* stream, i32 x) { fprintf(stream, "%d", x); }
+static inline void print1(FILE* stream, i64 x) { fprintf(stream, "%ld", x); }
 
-void print1(FILE* stream, f32 f) { fprintf(stream, "%8.4f", f); }
-void print1(FILE* stream, f64 f) { fprintf(stream, "%8.4f", f); }
+static inline void print1(FILE* stream, f32 f) { fprintf(stream, "%8.4f", f); }
+static inline void print1(FILE* stream, f64 f) { fprintf(stream, "%8.4f", f); }
 
-void print1(FILE* stream, StringView view) {
+static inline void print1(FILE* stream, StringView view) {
   fwrite(view.data(), 1, view.size(), stream);
 }
 
 template <typename T>
-void print1(FILE* stream, Maybe<T> m) {
+static inline void print1(FILE* stream, Maybe<T> m) {
   print1(stream, "Maybe{ ");
   print1(stream, m.has_value);
   print1(stream, ", ");
@@ -370,7 +382,7 @@ void print1(FILE* stream, Maybe<T> m) {
 }
 
 template <typename T, typename U>
-void print1(FILE* stream, std::pair<T, U> pr) {
+static inline void print1(FILE* stream, std::pair<T, U> pr) {
   print1(stream, "(");
   print1(stream, pr.first);
   print1(stream, ", ");
@@ -379,7 +391,7 @@ void print1(FILE* stream, std::pair<T, U> pr) {
 }
 
 template <typename T>
-void print1(FILE* stream, const std::vector<T>& v) {
+static inline void print1(FILE* stream, const std::vector<T>& v) {
   const size_t n = v.size();
   fprintf(stream, "vector(size=%zu) ", v.size());
   print1(stream, "{");
@@ -392,7 +404,7 @@ void print1(FILE* stream, const std::vector<T>& v) {
 }
 
 template <typename... Types>
-void println(FILE* stream, Types... args) {
+static inline void println(FILE* stream, Types... args) {
   (print1(stream, args), ...);
   print1(stream, '\n');
 }
@@ -569,15 +581,23 @@ constexpr auto enumerate(T&& iterable) {
   return iterable_wrapper{std::forward<T>(iterable)};
 }
 
-template <typename T, typename U>
-std::vector<std::pair<T, U>> zip(const std::vector<T>& a,
-                                 const std::vector<U>& b) {
-  std::vector<std::pair<T, U>> ret;
-
-  for (size_t i = 0; i < std::min(a.size(), b.size()); ++i) {
-    ret.emplace_back(a[i], b[i]);
+template <typename F, typename T, typename U>
+auto zip_with(F&& fn, const std::vector<T>& a, const std::vector<U>& b)
+    -> std::vector<decltype(fn(a[0], b[0]))> {
+  const size_t n = std::min(a.size(), b.size());
+  std::vector<decltype(fn(a[0], b[0]))> ret;
+  ret.reserve(n);
+  for (size_t i = 0; i < n; ++i) {
+    ret.emplace_back(fn(a[i], b[i]));
   }
   return ret;
+}
+
+template <typename T, typename U>
+auto zip_to_pair(const std::vector<T>& a, const std::vector<U>& b) {
+  auto MakePair = [](const T& x, const U& y) { return std::make_pair(x, y); };
+
+  return zip_with(MakePair, a, b);
 }
 
 template <typename T, typename R, typename FoldOp>
@@ -792,7 +812,34 @@ static inline std::vector<T> abs(std::vector<T>& vec) {
 }
 
 template <typename T>
-std::vector<T> pad(std::vector<T>& in, T pad_value = 0, int padwidth = 1) {
+std::vector<T> pad_right(const std::vector<T>& in, size_t padwidth = 1,
+                         T pad_value = 0) {
+  auto out_size = padwidth + in.size();
+  std::vector<T> out(out_size, pad_value);
+
+  for (size_t i = 0; i < in.size(); ++i) {
+    out[i] = in[i];
+  }
+
+  return out;
+}
+
+template <typename T>
+std::vector<T> pad_left(const std::vector<T>& in, size_t padwidth = 1,
+                        T pad_value = 0) {
+  auto out_size = padwidth + in.size();
+  std::vector<T> out(out_size, pad_value);
+
+  for (size_t i = padwidth; i < out_size; ++i) {
+    out[i] = in[i - padwidth];
+  }
+
+  return out;
+}
+
+template <typename T>
+std::vector<T> pad(const std::vector<T>& in, size_t padwidth = 1,
+                   T pad_value = 0) {
   auto out_size = 2 * padwidth + in.size();
   std::vector<T> out(out_size, pad_value);
 
