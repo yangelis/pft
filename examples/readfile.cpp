@@ -1,4 +1,3 @@
-#define PFT_IMPLEMENTATION
 #include "../pft.hpp"
 
 int main(int argc, char* argv[]) {

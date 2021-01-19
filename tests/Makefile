@@ -1,4 +1,5 @@
-CXXFLAGS = -std=c++17 -I../ -Wall -Wextra -pedantic -O0
+CXXFLAGS      := -std=c++17 -I../ -fno-exceptions -Wall -Wextra -Wshadow \
+                 -Wpedantic -Wcast-align -ggdb -O0
 
 .PHONY: test
 test: testing

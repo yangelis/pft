@@ -1,4 +1,5 @@
-CXXFLAGS      := -std=c++17 -I../ -Wall -Wextra -pedantic -ggdb -O0
+CXXFLAGS      := -std=c++17 -I../ -fno-exceptions -Wall -Wextra -Wshadow \
+               -Wpedantic -Wcast-align -ggdb -O0
 LIBS          :=
 ROOTCXXFLAGS  := $(shell root-config --cflags)
 ROOTLIBS      := $(shell root-config --ldflags --libs) -lCore -lMathCore
@@ -12,11 +13,11 @@ all: $(EXAMPLES) $(ROOTEXAMPLES) $(EXAMPLES_FFTW)
 .PHONY: examples
 examples: $(EXAMPLES)
 
-$(EXAMPLES): %: %.cpp
+$(EXAMPLES): %:%.cpp
 	@printf "# compiling $<\n"
 	$(CXX) $(CXXFLAGS) $< -o $@
 
-$(ROOTEXAMPLES): %: %.cpp
+$(ROOTEXAMPLES): %:%.cpp
 	@printf "# compiling $<\n"
 	$(CXX) $(CXXFLAGS) $(ROOTCXXFLAGS) $< -o $@ $(ROOTLIBS)
 
