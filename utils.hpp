@@ -1,20 +1,27 @@
 #ifndef UTILS_H_
 #define UTILS_H_
 #include "pft.hpp"
-#include <cmath>
+#include <complex>
 
 using pft::Maybe;
 
-std::tuple<std::vector<double>, std::vector<int>, std::vector<int>>
-peak_prominences(const std::vector<double>& xs, const std::vector<int> peaks,
-                 int wlen) {
+// so that we dont have to include complex in pft
+template <typename T>
+static inline auto abs_complex(std::vector<std::complex<T>>& vec) {
+  auto abs_lambda = [](auto x) { return std::abs(x); };
+  return pft::map(abs_lambda, vec);
+}
+
+auto peak_prominences(const std::vector<f64>& xs, const std::vector<int>& peaks,
+                      int wlen)
+    -> std::tuple<std::vector<f64>, std::vector<int>, std::vector<int>> {
   const size_t peaks_size = peaks.size();
 
-  std::vector<double> prominences(peaks_size);
+  std::vector<f64> prominences(peaks_size);
   std::vector<int> left_bases(peaks_size);
   std::vector<int> right_bases(peaks_size);
 
-  double left_min, right_min;
+  f64 left_min, right_min;
   int peak, i_min, i_max, i;
   for (size_t pi = 0; pi < peaks_size; ++pi) {
     peak  = peaks[pi];
@@ -55,21 +62,21 @@ peak_prominences(const std::vector<double>& xs, const std::vector<int> peaks,
   return std::make_tuple(prominences, left_bases, right_bases);
 }
 
-std::tuple<std::vector<double>, std::vector<double>, std::vector<double>,
-           std::vector<double>>
-peak_widths(const std::vector<double>& xs, const std::vector<int>& peaks,
-            double rel_height) {
+auto peak_widths(const std::vector<f64>& xs, const std::vector<int>& peaks,
+                 f64 rel_height)
+    -> std::tuple<std::vector<f64>, std::vector<f64>, std::vector<f64>,
+                  std::vector<f64>> {
   const size_t peaks_size = peaks.size();
   const int wlen          = -1;
   assert(rel_height > 0);
   auto prom_data = peak_prominences(xs, peaks, wlen);
   auto [prominences, left_bases, right_bases] = prom_data;
-  std::vector<double> widths(peaks_size);
-  std::vector<double> width_heights(peaks_size);
-  std::vector<double> left_ips(peaks_size);
-  std::vector<double> right_ips(peaks_size);
+  std::vector<f64> widths(peaks_size);
+  std::vector<f64> width_heights(peaks_size);
+  std::vector<f64> left_ips(peaks_size);
+  std::vector<f64> right_ips(peaks_size);
 
-  double height;
+  f64 height;
   int i_min, i_max, peak;
 
   for (size_t i = 0; i < peaks_size; ++i) {
@@ -88,7 +95,7 @@ peak_widths(const std::vector<double>& xs, const std::vector<int>& peaks,
     while (i_min < p && height < xs[p]) {
       --p;
     }
-    auto left_ip = (double)p;
+    auto left_ip = (f64)p;
 
     if (xs[p] < height) {
       left_ip += (height - xs[p]) / (xs[p + 1] - xs[p]);
@@ -100,7 +107,7 @@ peak_widths(const std::vector<double>& xs, const std::vector<int>& peaks,
       ++p;
     }
 
-    auto right_ip = (double)p;
+    auto right_ip = (f64)p;
     if (xs[p] < height) {
       right_ip -= (height - xs[p]) / (xs[p - 1] - xs[p]);
     }
@@ -149,8 +156,8 @@ local_maxima(std::vector<T> x) {
 }
 
 template <typename T>
-std::deque<bool> select_by_property(std::vector<T> p, T pmin, T pmax) {
-  std::deque<bool> keep(p.size(), 1);
+std::vector<i32> select_by_property(std::vector<T> p, T pmin, T pmax) {
+  std::vector<i32> keep(p.size(), 1);
 
   // if (pmin.has_value) {
   for (size_t i = 0; i < p.size(); ++i) {
@@ -167,9 +174,9 @@ std::deque<bool> select_by_property(std::vector<T> p, T pmin, T pmax) {
 }
 
 template <typename T>
-std::pair<double, double> unpack_condition_args(std::pair<T, T> interval,
-                                                std::vector<double> xs,
-                                                std::vector<int> peaks) {
+std::pair<f64, f64> unpack_condition_args(const std::pair<T, T>& interval,
+                                          const std::vector<f64>& xs,
+                                          const std::vector<int>& peaks) {
 
   // TODO: implement unpacking for when T is a container
   auto [imin, imax] = interval;
@@ -177,31 +184,31 @@ std::pair<double, double> unpack_condition_args(std::pair<T, T> interval,
   return std::make_pair(imin, imax);
 }
 
-std::deque<bool> select_peaks_by_distance(std::vector<int> peaks,
-                                          std::vector<double> priority,
-                                          double distance) {
+std::vector<i32> select_peaks_by_distance(const std::vector<int>& peaks,
+                                          const std::vector<f64>& priority,
+                                          f64 distance) {
 
   int peaks_size = peaks.size();
 
   distance = ceil(distance);
-  std::deque<bool> keep(peaks_size, 1);
+  std::vector<i32> keep(peaks_size, true);
 
   auto priority_to_position = pft::argsort(priority);
   int j                     = 0;
   for (int i = peaks_size - 1; i > -1; --i) {
     j = priority_to_position[i];
-    if (keep[j] == 0) {
+    if (!keep[j]) {
       continue;
     }
 
     auto k = j - 1;
     while (0 <= k && (peaks[j] - peaks[k]) < distance) {
-      keep[k] = 0;
+      keep[k] = false;
       --k;
     }
     k = j + 1;
     while (k < peaks_size && (peaks[k] - peaks[j]) < distance) {
-      keep[k] = 0;
+      keep[k] = false;
       ++k;
     }
   }
@@ -209,9 +216,9 @@ std::deque<bool> select_peaks_by_distance(std::vector<int> peaks,
   return keep;
 }
 
-std::vector<int> find_peaks(const std::vector<double>& xs,
-                            Maybe<std::pair<double, double>> height,
-                            double distance = 0.0) {
+std::vector<int> find_peaks(const std::vector<f64>& xs,
+                            Maybe<std::pair<f64, f64>> height,
+                            f64 distance = 0.0) {
   auto [peaks, l_edges, r_edges] = local_maxima(xs);
 
   if (height.has_value) {
@@ -219,13 +226,13 @@ std::vector<int> find_peaks(const std::vector<double>& xs,
     auto [hmin, hmax] = unpack_condition_args(height.unwrap, xs, peaks);
     auto keep         = select_by_property(peak_heights, hmin, hmax);
 
-    peaks = pft::take(peaks, keep);
+    peaks = pft::takeFromIdx(peaks, keep);
   }
   // distance between peaks
   if (distance != 0.0) {
     auto keep = select_peaks_by_distance(peaks, pft::take(xs, peaks), distance);
     // TODO: properly test that
-    peaks = pft::take(peaks, keep);
+    peaks = pft::takeFromIdx(peaks, keep);
   }
 
   return peaks;
@@ -238,14 +245,14 @@ T prod(const std::vector<T>& x) {
   return ret;
 }
 
-double factorial(const i64& n) {
-  static double table[171];
+f64 factorial(const i64& n) {
+  static f64 table[171];
   static bool init = true;
   if (init) {
     init     = false;
     table[0] = 1;
     for (size_t i = 1; i < 171; ++i) {
-      table[i] = (double)i * table[i - 1];
+      table[i] = (f64)i * table[i - 1];
     }
   }
   return table[n];
@@ -327,7 +334,7 @@ pft::Matrix<T> compute_householder_factor(const std::vector<T>& v) {
 }
 
 template <typename T>
-T vnorm(const std::vector<T>& x) {
+f64 vnorm(const std::vector<T>& x) {
   // T sum2 = 0;
   // for(size_t i =0;i<x.size();++i){
   //   sum2 += x[i]*x[i];
@@ -361,13 +368,13 @@ QRDecomposition(const pft::Matrix<T>& mat) {
   pft::Matrix<T> z1;
   for (size_t k = 0; k < n && k < m - 1; ++k) {
     std::vector<T> e(m, 0), x(m, 0);
-    double a;
+    f64 a;
 
     z1 = z.minor(k);
     z  = z1;
 
     x = z.getColumn(k);
-    a = vnorm(x);
+    a = pft::norm(x);
 
     if (mat(k, k) > 0) {
       a = -a;
@@ -378,7 +385,7 @@ QRDecomposition(const pft::Matrix<T>& mat) {
     }
 
     e     = vmadd(x, e, a);
-    e     = vdiv(e, vnorm(e));
+    e     = vdiv(e, pft::norm(e));
     qv[k] = compute_householder_factor(e);
 
     z1 = qv[k].mult(z);
@@ -402,7 +409,7 @@ struct LUdcmp {
   std::vector<int> indx;
   f64 d;
   LUdcmp(const Mat_t& a);
-  ~LUdcmp(){};
+  ~LUdcmp() = default;
   std::vector<f64> solve(const std::vector<f64>& b);
   void solve(Mat_t& b, Mat_t& x);
   void inverse(Mat_t& ainv);
@@ -462,14 +469,14 @@ LUdcmp::LUdcmp(const Mat_t& a) : n(a.rows), lu(a), indx(n) {
 std::vector<f64> LUdcmp::solve(const std::vector<f64>& b) {
   std::vector<f64> x(b);
 
-  size_t i, ii = 0, ip, j;
+  size_t ii = 0, ip, j;
   f64 sum;
   if (b.size() != n || x.size() != n) {
     fprintf(stderr, "Bad sizes\n");
     exit(1);
   }
 
-  for (i = 0; i < n; ++i) {
+  for (size_t i = 0; i < n; ++i) {
     ip    = indx[i];
     sum   = x[ip];
     x[ip] = x[i];
@@ -568,4 +575,109 @@ std::vector<f64> savgol_coeffs(const int np, const int nl, const int nr,
   return c;
 }
 
+#ifdef UTILS_USE_FFTW
+#include <complex>
+#include <fftw3.h>
+
+struct FFTW_R2C_1D {
+
+  size_t input_size{0};
+  double* const input_buffer;
+  size_t output_size{0};
+  fftw_complex* output_buffer;
+
+  FFTW_R2C_1D(size_t fft_size)
+      : input_size(fft_size), input_buffer(fftw_alloc_real(fft_size)),
+        output_size(input_size / 2 + 1),
+        output_buffer(fftw_alloc_complex(output_size)) {
+    p = fftw_plan_dft_r2c_1d(input_size, input_buffer, output_buffer,
+                             FFTW_ESTIMATE);
+  }
+
+  ~FFTW_R2C_1D() {
+    fftw_destroy_plan(p);
+    fftw_free(input_buffer);
+    fftw_free(output_buffer);
+  }
+
+  void set_input_zeropadded(const double* buffer, size_t size) {
+    assert(size <= input_size);
+    memcpy(input_buffer, buffer, sizeof(double) * size);
+    memset(&input_buffer[size], 0, sizeof(double) * (input_size - size));
+  }
+
+  void set_input_zeropadded(const std::vector<double>& vec) {
+    set_input_zeropadded(&vec[0], vec.size());
+  }
+
+  void run() { fftw_execute(p); }
+
+  // fftw_complex* get_output() { return output_buffer; }
+  std::vector<std::complex<double>> get_output() {
+    std::vector<std::complex<double>> ret(output_size);
+
+    for (size_t i = 0; i < output_size; ++i) {
+      ret[i] = {output_buffer[i][0], output_buffer[i][1]};
+    }
+    return ret;
+  }
+
+private:
+  fftw_plan p;
+};
+
+std::vector<f64> convln(const std::vector<f64>& input,
+                        const std::vector<f64>& kernel) {
+  fftw_plan p;
+  const auto n = input.size();
+  const auto m = kernel.size();
+
+  const size_t padded_length = input.size() + kernel.size() - 1;
+
+  // // zero pad input
+  auto padded_input = pft::pad_right(input, padded_length - n);
+
+  // fft of input
+  fftw_complex* input_fft = nullptr;
+  input_fft               = fftw_alloc_complex(padded_length);
+  p = fftw_plan_dft_r2c_1d(padded_length, padded_input.data(), input_fft,
+                           FFTW_ESTIMATE);
+  fftw_execute(p);
+
+  // zero pad kernel
+  auto padded_kernel = pft::pad_right(kernel, padded_length - m);
+
+  // fft of kernel
+  fftw_complex* kernel_fft = nullptr;
+  kernel_fft               = fftw_alloc_complex(padded_length);
+  p = fftw_plan_dft_r2c_1d(padded_length, padded_kernel.data(), kernel_fft,
+                           FFTW_ESTIMATE);
+  fftw_execute(p);
+
+  // mutliply the ffts
+  fftw_complex* fixed_product = nullptr;
+  fixed_product               = fftw_alloc_complex(padded_length);
+
+  for (size_t i = 0; i < padded_length / 2; ++i) {
+    fixed_product[i][0] =
+        input_fft[i][0] * kernel_fft[i][0] - input_fft[i][1] * kernel_fft[i][1];
+    fixed_product[i][1] =
+        input_fft[i][0] * kernel_fft[i][1] + input_fft[i][1] * kernel_fft[i][0];
+  }
+
+  // iff of the prodyct
+  f64* output = nullptr;
+  output      = fftw_alloc_real(padded_length);
+  p = fftw_plan_dft_c2r_1d(padded_length, fixed_product, output, FFTW_ESTIMATE);
+  fftw_execute(p);
+
+  // normalize output due to fftw scaling
+  for (size_t i = 0; i < n; ++i) {
+    output[i] /= padded_length;
+  }
+
+  std::vector<f64> ret(output, output + n);
+  return ret;
+}
+#endif
 #endif // UTILS_H_
