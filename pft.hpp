@@ -54,6 +54,7 @@
 #include <deque>
 #include <limits>
 #include <map>
+#include <numeric>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -490,7 +491,7 @@ struct Matrix {
     return ret;
   }
 
-  constexpr Matrix<T> minor(std::size_t d) const {
+  constexpr Matrix<T> GetMinor(std::size_t d) const {
     Matrix<T> ret(rows, cols);
     for (std::size_t i = 0; i < d; ++i) {
       ret(i, i) = 1;
@@ -650,7 +651,8 @@ R foldl(const R& i, const std::vector<T>& xs, FoldOp fn) {
 
 template <typename T>
 static inline T sum(const std::vector<T>& xs) {
-  return foldl(T(), xs, [](const T& a, const T& b) -> T { return a + b; });
+  return std::accumulate(std::cbegin(xs), std::cend(xs), T());
+  // return foldl(T(), xs, [](const T& a, const T& b) -> T { return a + b; });
 }
 
 template <typename T>
@@ -672,7 +674,7 @@ static inline double var(const std::vector<T>& xs) {
     squared_sum += x - xs_mean;
     sum_squares += (x - xs_mean) * (x - xs_mean);
   };
-  std::for_each(xs.begin(), xs.end(), pred);
+  std::for_each(std::cbegin(xs), std::end(xs), pred);
   const auto N = (double)n;
   return (sum_squares - squared_sum * squared_sum / N) / (N - 1);
 }
@@ -697,6 +699,15 @@ static inline std::size_t GetVectorsSize(const std::vector<Types>&... vs) {
   return sizes[0];
 }
 
+template <typename F, typename T>
+static inline auto map(F&& fn, const std::vector<T>& input)
+    -> std::vector<decltype(fn(input[0]))> {
+  const auto size = input.size();
+  std::vector<decltype(fn(input[0]))> ret(size);
+  std::transform(input.begin(), input.end(), ret.begin(), fn);
+  return ret;
+}
+
 template <typename F, typename... Types>
 static inline auto map(F&& fn, const std::vector<Types>&... input)
     -> std::vector<decltype(fn(input[0]...))> {
@@ -705,15 +716,6 @@ static inline auto map(F&& fn, const std::vector<Types>&... input)
   for (std::size_t i = 0; i < size; ++i) {
     ret[i] = fn(input[i]...);
   }
-  return ret;
-}
-
-template <typename F, typename T>
-static inline auto map(F&& fn, const std::vector<T>& input)
-    -> std::vector<decltype(fn(input[0]))> {
-  const auto size = input.size();
-  std::vector<decltype(fn(input[0]))> ret(size);
-  std::transform(input.begin(), input.end(), ret.begin(), fn);
   return ret;
 }
 

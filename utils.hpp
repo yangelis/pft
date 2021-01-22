@@ -8,7 +8,7 @@ using pft::Maybe;
 // so that we dont have to include complex in pft
 template <typename T>
 static inline auto abs_complex(std::vector<std::complex<T>>& vec) {
-  auto abs_lambda = [](auto x) { return std::abs(x); };
+  auto abs_lambda = [](const auto& x) { return std::abs(x); };
   return pft::map(abs_lambda, vec);
 }
 
@@ -334,16 +334,10 @@ pft::Matrix<T> compute_householder_factor(const std::vector<T>& v) {
 }
 
 template <typename T>
-f64 vnorm(const std::vector<T>& x) {
-  // T sum2 = 0;
-  // for(size_t i =0;i<x.size();++i){
-  //   sum2 += x[i]*x[i];
-  // }
-
-  // TODO: This is hackish
-  auto sum2 =
-      pft::foldl(T(), x, [](const T& a, const T& b) -> T { return a + b * b; });
-  return std::sqrt(sum2);
+f64 vnorm(const std::vector<T>& xs) {
+  return std::sqrt(std::transform_reduce(std::cbegin(xs), std::cend(xs), T(),
+                                         std::plus{},
+                                         [](const auto& x) { return x * x; }));
 }
 
 template <typename T>
@@ -370,7 +364,7 @@ QRDecomposition(const pft::Matrix<T>& mat) {
     std::vector<T> e(m, 0), x(m, 0);
     f64 a;
 
-    z1 = z.minor(k);
+    z1 = z.GetMinor(k);
     z  = z1;
 
     x = z.getColumn(k);
