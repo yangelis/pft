@@ -13,8 +13,8 @@ jobs:
           cd ../tests
           make -B
         env:
-          CC: gcc
-          CXX: g++
+          CC: gcc-10
+          CXX: g++-10
   build-linux-clang:
     runs-on: ubuntu-18.04
     steps:

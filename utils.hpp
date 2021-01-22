@@ -62,15 +62,18 @@ auto peak_prominences(const std::vector<f64>& xs, const std::vector<int>& peaks,
   return std::make_tuple(prominences, left_bases, right_bases);
 }
 
+struct Peak {
+  f64 width, width_height;
+  f64 left_p, right_p;
+};
+
 auto peak_widths(const std::vector<f64>& xs, const std::vector<int>& peaks,
-                 f64 rel_height)
-    -> std::tuple<std::vector<f64>, std::vector<f64>, std::vector<f64>,
-                  std::vector<f64>> {
+                 f64 rel_height) -> std::vector<Peak> {
   const size_t peaks_size = peaks.size();
   const int wlen          = -1;
   assert(rel_height > 0);
-  auto prom_data = peak_prominences(xs, peaks, wlen);
-  auto [prominences, left_bases, right_bases] = prom_data;
+  const auto [prominences, left_bases, right_bases] =
+      peak_prominences(xs, peaks, wlen);
   std::vector<f64> widths(peaks_size);
   std::vector<f64> width_heights(peaks_size);
   std::vector<f64> left_ips(peaks_size);
@@ -115,12 +118,17 @@ auto peak_widths(const std::vector<f64>& xs, const std::vector<int>& peaks,
     left_ips[i]  = left_ip;
     right_ips[i] = right_ip;
   }
-  return std::make_tuple(widths, width_heights, left_ips, right_ips);
+
+  std::vector<Peak> widths_vec(peaks_size);
+  for (size_t i = 0; i < peaks_size; ++i) {
+    widths_vec[i] = {widths[i], width_heights[i], left_ips[i], right_ips[i]};
+  }
+  return widths_vec;
 }
 
 template <typename T>
-std::tuple<std::vector<int>, std::vector<int>, std::vector<int>>
-local_maxima(std::vector<T> x) {
+auto local_maxima(std::vector<T> x)
+    -> std::tuple<std::vector<int>, std::vector<int>, std::vector<int>> {
   const size_t n = x.size();
   std::vector<int> midpoints(n / 2, 0);
   std::vector<int> left_edges(n / 2, 0);
@@ -156,7 +164,7 @@ local_maxima(std::vector<T> x) {
 }
 
 template <typename T>
-std::vector<i32> select_by_property(std::vector<T> p, T pmin, T pmax) {
+auto select_by_property(std::vector<T> p, T pmin, T pmax) -> std::vector<i32> {
   std::vector<i32> keep(p.size(), 1);
 
   // if (pmin.has_value) {
@@ -174,9 +182,10 @@ std::vector<i32> select_by_property(std::vector<T> p, T pmin, T pmax) {
 }
 
 template <typename T>
-std::pair<f64, f64> unpack_condition_args(const std::pair<T, T>& interval,
-                                          const std::vector<f64>& xs,
-                                          const std::vector<int>& peaks) {
+auto unpack_condition_args(const std::pair<T, T>& interval,
+                           const std::vector<f64>& xs,
+                           const std::vector<int>& peaks)
+    -> std::pair<f64, f64> {
 
   // TODO: implement unpacking for when T is a container
   auto [imin, imax] = interval;
@@ -184,9 +193,9 @@ std::pair<f64, f64> unpack_condition_args(const std::pair<T, T>& interval,
   return std::make_pair(imin, imax);
 }
 
-std::vector<i32> select_peaks_by_distance(const std::vector<int>& peaks,
-                                          const std::vector<f64>& priority,
-                                          f64 distance) {
+auto select_peaks_by_distance(const std::vector<int>& peaks,
+                              const std::vector<f64>& priority, f64 distance)
+    -> std::vector<i32> {
 
   int peaks_size = peaks.size();
 
@@ -216,9 +225,8 @@ std::vector<i32> select_peaks_by_distance(const std::vector<int>& peaks,
   return keep;
 }
 
-std::vector<int> find_peaks(const std::vector<f64>& xs,
-                            Maybe<std::pair<f64, f64>> height,
-                            f64 distance = 0.0) {
+auto find_peaks(const std::vector<f64>& xs, Maybe<std::pair<f64, f64>> height,
+                f64 distance = 0.0) -> std::vector<int> {
   auto [peaks, l_edges, r_edges] = local_maxima(xs);
 
   if (height.has_value) {
@@ -239,13 +247,13 @@ std::vector<int> find_peaks(const std::vector<f64>& xs,
 }
 
 template <typename T>
-T prod(const std::vector<T>& x) {
+auto prod(const std::vector<T>& x) -> T {
   auto ret =
       pft::foldl(T(1), x, [](const T& a, const T& b) -> T { return a * b; });
   return ret;
 }
 
-f64 factorial(const i64& n) {
+auto factorial(const i64& n) -> f64 {
   static f64 table[171];
   static bool init = true;
   if (init) {
@@ -259,7 +267,7 @@ f64 factorial(const i64& n) {
 }
 
 template <typename T>
-pft::Matrix<T> vandermonde(i64 halfWindow, i64 polyDeg) {
+auto vandermonde(i64 halfWindow, i64 polyDeg) -> pft::Matrix<T> {
   assert(halfWindow >= 0);
   assert(polyDeg >= 0);
   // arange return an exclusive range
@@ -284,7 +292,7 @@ pft::Matrix<T> vandermonde(i64 halfWindow, i64 polyDeg) {
 }
 
 template <typename T>
-pft::Matrix<T> SG(i64 halfWindow, i64 polyDeg) {
+auto SG(i64 halfWindow, i64 polyDeg) -> pft::Matrix<T> {
   assert(2 * halfWindow > polyDeg);
 
   auto V = vandermonde<T>(halfWindow, polyDeg);
@@ -306,19 +314,19 @@ pft::Matrix<T> SG(i64 halfWindow, i64 polyDeg) {
 }
 
 template <typename T>
-std::vector<T> vmadd(const std::vector<T>& a, const std::vector<T>& b, T s) {
+auto vmadd(const std::vector<T>& a, const std::vector<T>& b, T s)
+    -> std::vector<T> {
   const auto n = a.size();
-  std::vector<T> ret;
-  ret.reserve(n);
+  std::vector<T> ret(n);
   for (size_t i = 0; i < n; ++i) {
-    ret.push_back(a[i] + s * b[i]);
+    ret[i] = a[i] + s * b[i];
   }
 
   return ret;
 }
 
 template <typename T>
-pft::Matrix<T> compute_householder_factor(const std::vector<T>& v) {
+auto compute_householder_factor(const std::vector<T>& v) -> pft::Matrix<T> {
   const auto n = v.size();
   pft::Matrix<T> ret(n, n);
 
@@ -334,21 +342,21 @@ pft::Matrix<T> compute_householder_factor(const std::vector<T>& v) {
 }
 
 template <typename T>
-f64 vnorm(const std::vector<T>& xs) {
+auto vnorm(const std::vector<T>& xs) -> f64 {
   return std::sqrt(std::transform_reduce(std::cbegin(xs), std::cend(xs), T(),
                                          std::plus{},
                                          [](const auto& x) { return x * x; }));
 }
 
 template <typename T>
-std::vector<T> vdiv(const std::vector<T>& x, T d) {
+auto vdiv(const std::vector<T>& x, T d) -> std::vector<T> {
   auto ret = pft::map([&d](const T& a) -> T { return a / d; }, x);
   return ret;
 }
 
 template <typename T>
-std::pair<pft::Matrix<T>, pft::Matrix<T>>
-QRDecomposition(const pft::Matrix<T>& mat) {
+auto QRDecomposition(const pft::Matrix<T>& mat)
+    -> std::pair<pft::Matrix<T>, pft::Matrix<T>> {
   pft::Matrix<T> Q;
   pft::Matrix<T> R;
 
@@ -404,7 +412,7 @@ struct LUdcmp {
   f64 d;
   LUdcmp(const Mat_t& a);
   ~LUdcmp() = default;
-  std::vector<f64> solve(const std::vector<f64>& b);
+  auto solve(const std::vector<f64>& b) -> std::vector<f64>;
   void solve(Mat_t& b, Mat_t& x);
   void inverse(Mat_t& ainv);
   // f64 det();
@@ -460,7 +468,7 @@ LUdcmp::LUdcmp(const Mat_t& a) : n(a.rows), lu(a), indx(n) {
   }
 }
 
-std::vector<f64> LUdcmp::solve(const std::vector<f64>& b) {
+auto LUdcmp::solve(const std::vector<f64>& b) -> std::vector<f64> {
   std::vector<f64> x(b);
 
   size_t ii = 0, ip, j;
@@ -520,8 +528,8 @@ void LUdcmp::inverse(Mat_t& ainv) {
 // nl, nr: n points to left and right
 // ld: order of the derivative, default = 0 (no derivation)
 // m: order of the polynomial
-std::vector<f64> savgol_coeffs(const int np, const int nl, const int nr,
-                               const int ld, const int m) {
+auto savgol_coeffs(const int np, const int nl, const int nr, const int ld,
+                   const int m) -> std::vector<f64> {
 
   if (np < nl + nr + 1 || nr < 0 || nr < 0 || ld > m || nl + nr < m) {
     fprintf(stderr, "Bad arguments\n");
@@ -607,7 +615,7 @@ struct FFTW_R2C_1D {
   void run() { fftw_execute(p); }
 
   // fftw_complex* get_output() { return output_buffer; }
-  std::vector<std::complex<double>> get_output() {
+  auto get_output() -> std::vector<std::complex<double>> {
     std::vector<std::complex<double>> ret(output_size);
 
     for (size_t i = 0; i < output_size; ++i) {
@@ -620,8 +628,8 @@ private:
   fftw_plan p;
 };
 
-std::vector<f64> convln(const std::vector<f64>& input,
-                        const std::vector<f64>& kernel) {
+auto convln(const std::vector<f64>& input, const std::vector<f64>& kernel)
+    -> std::vector<f64> {
   fftw_plan p;
   const auto n = input.size();
   const auto m = kernel.size();
