@@ -12,17 +12,17 @@ static inline auto abs_complex(std::vector<std::complex<T>>& vec) {
   return pft::map(abs_lambda, vec);
 }
 
-auto peak_prominences(const std::vector<f64>& xs, const std::vector<int>& peaks,
-                      int wlen)
-    -> std::tuple<std::vector<f64>, std::vector<int>, std::vector<int>> {
+auto peak_prominences(const std::vector<f64>& xs, const std::vector<i32>& peaks,
+                      i32 wlen)
+    -> std::tuple<std::vector<f64>, std::vector<i32>, std::vector<i32>> {
   const size_t peaks_size = peaks.size();
 
   std::vector<f64> prominences(peaks_size);
-  std::vector<int> left_bases(peaks_size);
-  std::vector<int> right_bases(peaks_size);
+  std::vector<i32> left_bases(peaks_size);
+  std::vector<i32> right_bases(peaks_size);
 
   f64 left_min, right_min;
-  int peak, i_min, i_max, i;
+  i32 peak, i_min, i_max, i;
   for (size_t pi = 0; pi < peaks_size; ++pi) {
     peak  = peaks[pi];
     i_min = 0;
@@ -63,76 +63,83 @@ auto peak_prominences(const std::vector<f64>& xs, const std::vector<int>& peaks,
 }
 
 struct Peak {
+  i32 index;
+  f64 height;
   f64 width, width_height;
   f64 left_p, right_p;
 };
 
-auto peak_widths(const std::vector<f64>& xs, const std::vector<int>& peaks,
-                 f64 rel_height) -> std::vector<Peak> {
-  const size_t peaks_size = peaks.size();
-  const int wlen          = -1;
+/// Find the width of each peak at a relative height
+auto peak_widths(const std::vector<f64>& signal,
+                 const std::vector<i32>& peaks_indices, f64 rel_height)
+    -> std::vector<Peak> {
+  const size_t n_of_peaks = peaks_indices.size();
+  const i32 wlen          = -1;
   assert(rel_height > 0);
   const auto [prominences, left_bases, right_bases] =
-      peak_prominences(xs, peaks, wlen);
-  std::vector<f64> widths(peaks_size);
-  std::vector<f64> width_heights(peaks_size);
-  std::vector<f64> left_ips(peaks_size);
-  std::vector<f64> right_ips(peaks_size);
+      peak_prominences(signal, peaks_indices, wlen);
+  std::vector<f64> widths(n_of_peaks);
+  std::vector<f64> width_heights(n_of_peaks);
+  std::vector<f64> left_ips(n_of_peaks);
+  std::vector<f64> right_ips(n_of_peaks);
 
   f64 height;
-  int i_min, i_max, peak;
+  i32 i_min, i_max, peak_index;
 
-  for (size_t i = 0; i < peaks_size; ++i) {
-    i_min = left_bases[i];
-    i_max = right_bases[i];
-    peak  = peaks[i];
-    if (!(0 <= i_min && i_min <= peak && peak <= i_max && i_max < xs.size())) {
+  for (size_t i = 0; i < n_of_peaks; ++i) {
+    i_min      = left_bases[i];
+    i_max      = right_bases[i];
+    peak_index = peaks_indices[i];
+    if (!(0 <= i_min && i_min <= peak_index && peak_index <= i_max &&
+          i_max < signal.size())) {
       fprintf(stderr, "Oopsie\n");
       exit(1);
     }
-    height           = xs[peak] - prominences[i] * rel_height;
+    height           = signal[peak_index] - prominences[i] * rel_height;
     width_heights[i] = height;
 
     // intersection point on left side
-    auto p = peak;
-    while (i_min < p && height < xs[p]) {
+    auto p = peak_index;
+    while (i_min < p && height < signal[p]) {
       --p;
     }
     auto left_ip = (f64)p;
 
-    if (xs[p] < height) {
-      left_ip += (height - xs[p]) / (xs[p + 1] - xs[p]);
+    if (signal[p] < height) {
+      left_ip += (height - signal[p]) / (signal[p + 1] - signal[p]);
     }
 
     // intersection point on right side
-    p = peak;
-    while (p < i_max && height < xs[p]) {
+    p = peak_index;
+    while (p < i_max && height < signal[p]) {
       ++p;
     }
 
     auto right_ip = (f64)p;
-    if (xs[p] < height) {
-      right_ip -= (height - xs[p]) / (xs[p - 1] - xs[p]);
+    if (signal[p] < height) {
+      right_ip -= (height - signal[p]) / (signal[p - 1] - signal[p]);
     }
     widths[i]    = right_ip - left_ip;
     left_ips[i]  = left_ip;
     right_ips[i] = right_ip;
   }
 
-  std::vector<Peak> widths_vec(peaks_size);
-  for (size_t i = 0; i < peaks_size; ++i) {
-    widths_vec[i] = {widths[i], width_heights[i], left_ips[i], right_ips[i]};
+  std::vector<Peak> widths_vec(n_of_peaks);
+  for (size_t i = 0; i < n_of_peaks; ++i) {
+    widths_vec[i] = {peaks_indices[i], signal[peaks_indices[i]],
+                     widths[i],        width_heights[i],
+                     left_ips[i],      right_ips[i]};
   }
   return widths_vec;
 }
 
 template <typename T>
 auto local_maxima(std::vector<T> x)
-    -> std::tuple<std::vector<int>, std::vector<int>, std::vector<int>> {
+    -> std::tuple<std::vector<i32>, std::vector<i32>, std::vector<i32>> {
   const size_t n = x.size();
-  std::vector<int> midpoints(n / 2, 0);
-  std::vector<int> left_edges(n / 2, 0);
-  std::vector<int> right_edges(n / 2, 0);
+  std::vector<i32> midpoints(n / 2, 0);
+  std::vector<i32> left_edges(n / 2, 0);
+  std::vector<i32> right_edges(n / 2, 0);
   size_t m = 0; // index pointer to the end
 
   size_t i   = 1;
@@ -184,7 +191,7 @@ auto select_by_property(std::vector<T> p, T pmin, T pmax) -> std::vector<i32> {
 template <typename T>
 auto unpack_condition_args(const std::pair<T, T>& interval,
                            const std::vector<f64>& xs,
-                           const std::vector<int>& peaks)
+                           const std::vector<i32>& peaks)
     -> std::pair<f64, f64> {
 
   // TODO: implement unpacking for when T is a container
@@ -193,18 +200,18 @@ auto unpack_condition_args(const std::pair<T, T>& interval,
   return std::make_pair(imin, imax);
 }
 
-auto select_peaks_by_distance(const std::vector<int>& peaks,
+auto select_peaks_by_distance(const std::vector<i32>& peaks,
                               const std::vector<f64>& priority, f64 distance)
     -> std::vector<i32> {
 
-  int peaks_size = peaks.size();
+  i32 peaks_size = peaks.size();
 
   distance = ceil(distance);
   std::vector<i32> keep(peaks_size, true);
 
   auto priority_to_position = pft::argsort(priority);
-  int j                     = 0;
-  for (int i = peaks_size - 1; i > -1; --i) {
+  i32 j                     = 0;
+  for (i32 i = peaks_size - 1; i > -1; --i) {
     j = priority_to_position[i];
     if (!keep[j]) {
       continue;
@@ -225,25 +232,27 @@ auto select_peaks_by_distance(const std::vector<int>& peaks,
   return keep;
 }
 
+/// Return the indices of the peaks
 auto find_peaks(const std::vector<f64>& xs, Maybe<std::pair<f64, f64>> height,
-                f64 distance = 0.0) -> std::vector<int> {
-  auto [peaks, l_edges, r_edges] = local_maxima(xs);
+                f64 distance = 0.0) -> std::vector<i32> {
+  auto [peaks_indices, l_edges, r_edges] = local_maxima(xs);
 
   if (height.has_value) {
-    auto peak_heights = pft::take(xs, peaks);
-    auto [hmin, hmax] = unpack_condition_args(height.unwrap, xs, peaks);
+    auto peak_heights = pft::take(xs, peaks_indices);
+    auto [hmin, hmax] = unpack_condition_args(height.unwrap, xs, peaks_indices);
     auto keep         = select_by_property(peak_heights, hmin, hmax);
 
-    peaks = pft::takeFromIdx(peaks, keep);
+    peaks_indices = pft::takeFromIdx(peaks_indices, keep);
   }
   // distance between peaks
   if (distance != 0.0) {
-    auto keep = select_peaks_by_distance(peaks, pft::take(xs, peaks), distance);
+    auto keep = select_peaks_by_distance(
+        peaks_indices, pft::take(xs, peaks_indices), distance);
     // TODO: properly test that
-    peaks = pft::takeFromIdx(peaks, keep);
+    peaks_indices = pft::takeFromIdx(peaks_indices, keep);
   }
 
-  return peaks;
+  return peaks_indices;
 }
 
 template <typename T>
@@ -310,9 +319,10 @@ auto SG(i64 halfWindow, i64 polyDeg) -> pft::Matrix<T> {
     }
   }
 
-  return SG.transpoze();
+  return SG.transpose();
 }
 
+/// Calculate Vi = Ai + c*Bi
 template <typename T>
 auto vmadd(const std::vector<T>& a, const std::vector<T>& b, T s)
     -> std::vector<T> {
@@ -341,6 +351,7 @@ auto compute_householder_factor(const std::vector<T>& v) -> pft::Matrix<T> {
   return ret;
 }
 
+/// Return the norm of a vector
 template <typename T>
 auto vnorm(const std::vector<T>& xs) -> f64 {
   return std::sqrt(std::transform_reduce(std::cbegin(xs), std::cend(xs), T(),
@@ -348,6 +359,7 @@ auto vnorm(const std::vector<T>& xs) -> f64 {
                                          [](const auto& x) { return x * x; }));
 }
 
+/// Divide a vector with a value
 template <typename T>
 auto vdiv(const std::vector<T>& x, T d) -> std::vector<T> {
   auto ret = pft::map([&d](const T& a) -> T { return a / d; }, x);
@@ -404,21 +416,22 @@ auto QRDecomposition(const pft::Matrix<T>& mat)
   return {Q.transpose(), R};
 }
 
-struct LUdcmp {
+struct LUdecomposition {
   using Mat_t = pft::Matrix<f64>;
   size_t n;
   Mat_t lu;
-  std::vector<int> indx;
+  std::vector<i32> indices;
   f64 d;
-  LUdcmp(const Mat_t& a);
-  ~LUdcmp() = default;
+  LUdecomposition(const Mat_t& a);
+  ~LUdecomposition() = default;
   auto solve(const std::vector<f64>& b) -> std::vector<f64>;
   void solve(Mat_t& b, Mat_t& x);
   void inverse(Mat_t& ainv);
   // f64 det();
 };
 
-LUdcmp::LUdcmp(const Mat_t& a) : n(a.rows), lu(a), indx(n) {
+LUdecomposition::LUdecomposition(const Mat_t& a)
+    : n(a.rows), lu(a), indices(n) {
 
   constexpr f64 tiny = 1.0e-40;
   size_t i, imax, j, k;
@@ -454,7 +467,7 @@ LUdcmp::LUdcmp(const Mat_t& a) : n(a.rows), lu(a), indx(n) {
       d        = -d;
       vv[imax] = vv[k];
     }
-    indx[k] = imax;
+    indices[k] = imax;
     if (lu(k, k) == 0.0) {
       lu(k, k) = tiny;
     }
@@ -468,7 +481,7 @@ LUdcmp::LUdcmp(const Mat_t& a) : n(a.rows), lu(a), indx(n) {
   }
 }
 
-auto LUdcmp::solve(const std::vector<f64>& b) -> std::vector<f64> {
+auto LUdecomposition::solve(const std::vector<f64>& b) -> std::vector<f64> {
   std::vector<f64> x(b);
 
   size_t ii = 0, ip, j;
@@ -479,7 +492,7 @@ auto LUdcmp::solve(const std::vector<f64>& b) -> std::vector<f64> {
   }
 
   for (size_t i = 0; i < n; ++i) {
-    ip    = indx[i];
+    ip    = indices[i];
     sum   = x[ip];
     x[ip] = x[i];
     if (ii != 0) {
@@ -492,7 +505,7 @@ auto LUdcmp::solve(const std::vector<f64>& b) -> std::vector<f64> {
     x[i] = sum;
   }
 
-  for (int i = n - 1; i >= 0; --i) {
+  for (i32 i = n - 1; i >= 0; --i) {
     sum = x[i];
     for (j = i + 1; j < n; ++j) {
       sum -= lu(i, j) * x[j];
@@ -503,7 +516,7 @@ auto LUdcmp::solve(const std::vector<f64>& b) -> std::vector<f64> {
   return x;
 }
 
-void LUdcmp::solve(Mat_t& b, Mat_t& x) {
+void LUdecomposition::solve(Mat_t& b, Mat_t& x) {
   size_t i, m = b.cols;
   std::vector<f64> xx(n);
   for (size_t j = 0; j < m; ++j) {
@@ -517,31 +530,31 @@ void LUdcmp::solve(Mat_t& b, Mat_t& x) {
   }
 }
 
-void LUdcmp::inverse(Mat_t& ainv) {
+void LUdecomposition::inverse(Mat_t& ainv) {
   ainv = Mat_t(n, n);
   ainv.diagonal();
   solve(ainv, ainv);
 }
 
-// Savitzky-Golay Coeffs for 1-D filter
-// np: n points, must be an odd number
-// nl, nr: n points to left and right
-// ld: order of the derivative, default = 0 (no derivation)
-// m: order of the polynomial
-auto savgol_coeffs(const int np, const int nl, const int nr, const int ld,
-                   const int m) -> std::vector<f64> {
+/// Savitzky-Golay Coeffs for 1-D filter
+/// np: n points, must be an odd number
+/// nl, nr: n points to left and right
+/// ld: order of the derivative, default = 0 (no derivation)
+/// m: order of the polynomial
+auto savgol_coeffs(const i32 np, const i32 nl, const i32 nr, const i32 ld,
+                   const i32 m) -> std::vector<f64> {
 
   if (np < nl + nr + 1 || nr < 0 || nr < 0 || ld > m || nl + nr < m) {
     fprintf(stderr, "Bad arguments\n");
     exit(1);
   }
 
-  int k, mm, imj, kk;
+  i32 k, mm, imj, kk;
   f64 sum, fac;
-  std::vector<int> indx(m + 1);
+  std::vector<i32> indx(m + 1);
   pft::Matrix<f64> a(m + 1, m + 1);
 
-  for (int ipj = 0; ipj <= (m << 1); ++ipj) {
+  for (i32 ipj = 0; ipj <= (m << 1); ++ipj) {
     sum = (ipj ? 0.0 : 1.0);
     for (k = 1; k <= nr; ++k) {
       sum += std::pow((f64)k, (f64)ipj);
@@ -555,7 +568,7 @@ auto savgol_coeffs(const int np, const int nl, const int nr, const int ld,
       a((ipj + imj) / 2, (ipj - imj) / 2) = sum;
     }
   }
-  LUdcmp alud(a);
+  LUdecomposition alud(a);
   std::vector<f64> b(m + 1, 0.0);
   b[ld] = 1.0;
   b     = alud.solve(b);
@@ -584,7 +597,7 @@ auto savgol_coeffs(const int np, const int nl, const int nr, const int ld,
 struct FFTW_R2C_1D {
 
   size_t input_size{0};
-  double* const input_buffer;
+  f64* const input_buffer;
   size_t output_size{0};
   fftw_complex* output_buffer;
 
@@ -602,21 +615,21 @@ struct FFTW_R2C_1D {
     fftw_free(output_buffer);
   }
 
-  void set_input_zeropadded(const double* buffer, size_t size) {
+  void set_input_zeropadded(const f64* buffer, size_t size) {
     assert(size <= input_size);
-    memcpy(input_buffer, buffer, sizeof(double) * size);
-    memset(&input_buffer[size], 0, sizeof(double) * (input_size - size));
+    memcpy(input_buffer, buffer, sizeof(f64) * size);
+    memset(&input_buffer[size], 0, sizeof(f64) * (input_size - size));
   }
 
-  void set_input_zeropadded(const std::vector<double>& vec) {
+  void set_input_zeropadded(const std::vector<f64>& vec) {
     set_input_zeropadded(&vec[0], vec.size());
   }
 
   void run() { fftw_execute(p); }
 
   // fftw_complex* get_output() { return output_buffer; }
-  auto get_output() -> std::vector<std::complex<double>> {
-    std::vector<std::complex<double>> ret(output_size);
+  auto get_output() -> std::vector<std::complex<f64>> {
+    std::vector<std::complex<f64>> ret(output_size);
 
     for (size_t i = 0; i < output_size; ++i) {
       ret[i] = {output_buffer[i][0], output_buffer[i][1]};
