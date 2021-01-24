@@ -51,7 +51,7 @@ int main() {
   double arr2[][2] = {{4, 3}, {6, 3}};
 
   pft::Matrix<f64> mat_for_lu(arr2);
-  LUdcmp lumat(mat_for_lu);
+  LUdecomposition lumat(mat_for_lu);
 
   pft::println(stdout, lumat.lu);
 
