@@ -91,7 +91,7 @@ auto peak_widths(const std::vector<f64>& signal,
     i_max      = right_bases[i];
     peak_index = peaks_indices[i];
     if (!(0 <= i_min && i_min <= peak_index && peak_index <= i_max &&
-          i_max < signal.size())) {
+          i_max < static_cast<i32>(signal.size()))) {
       fprintf(stderr, "Oopsie\n");
       exit(1);
     }
@@ -194,6 +194,8 @@ auto unpack_condition_args(const std::pair<T, T>& interval,
                            const std::vector<i32>& peaks)
     -> std::pair<f64, f64> {
 
+  (void)xs;
+  (void)peaks;
   // TODO: implement unpacking for when T is a container
   auto [imin, imax] = interval;
 
@@ -549,7 +551,8 @@ auto savgol_coeffs(const i32 np, const i32 nl, const i32 nr, const i32 ld,
     exit(1);
   }
 
-  i32 k, mm, imj, kk;
+  i32 k, mm, imj;
+  // i32 kk;
   f64 sum, fac;
   std::vector<i32> indx(m + 1);
   pft::Matrix<f64> a(m + 1, m + 1);

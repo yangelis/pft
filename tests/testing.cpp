@@ -2,8 +2,14 @@
 #include "../utils.hpp"
 #include <numeric>
 
-int main(int argc, char* argv[]) {
+int main() {
+  ////////////////////////////////////////////////
+  // Maybe
+  ////////////////////////////////////////////////
+  constexpr auto m = pft::Some<i32>(123459);
+  static_assert(m.unwrap == 123459 && m.has_value);
 
+  pft::println(stdout, "[PASSED] ", "Maybe tests");
   ////////////////////////////////////////////////
   // filter
   ////////////////////////////////////////////////
@@ -23,7 +29,7 @@ int main(int argc, char* argv[]) {
 
   std::vector<pft::StringView> num_test = {"123.456", "9999.9", "69.420"};
   std::vector<f64> nums_double          = {123.456, 9999.9, 69.420};
-  std::vector<i32> nums_ints  = {123, 9999, 69};
+  std::vector<i32> nums_ints            = {123, 9999, 69};
 
   assert(nums_double == pft::map(to_double, num_test));
   assert(nums_ints == pft::map(to_int, num_test));
@@ -78,7 +84,7 @@ int main(int argc, char* argv[]) {
   auto big_vec = pft::arange(0, 1000000);
   std::vector<i32> vec_iota(big_vec.size());
   std::iota(vec_iota.begin(), vec_iota.end(), 0);
-  for (i32 i = 0; i < big_vec.size(); ++i) {
+  for (i32 i = 0; i < static_cast<i32>(big_vec.size()); ++i) {
     assert(big_vec[i] == i);
   }
   pft::println(stdout, "[PASSED] ", "arange tests");

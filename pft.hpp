@@ -26,6 +26,7 @@
 //            remove zip,
 //            GetVectorsSize, map
 //            takeFromIdx, Slice, chunks
+//            Some
 //   0.0.6    mod, findfirst, findall,
 //            panic, unwrap_or_panic
 //   0.0.5    map, take, filter, var,
@@ -195,6 +196,11 @@ struct Maybe {
   }
 };
 
+template <typename T>
+constexpr auto Some(T m) -> Maybe<T> {
+  return {true, m};
+}
+
 //////////////////////////////////////////////////
 // StringView
 //////////////////////////////////////////////////
@@ -271,7 +277,7 @@ struct Particles_t {
 };
 
 // StringView utilities
-static StringView operator""_sv(const char* data, std::size_t count) {
+static inline StringView operator""_sv(const char* data, std::size_t count) {
   return {data, count};
 }
 

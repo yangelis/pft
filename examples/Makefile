@@ -31,4 +31,4 @@ clean:
 	rm -f *.o $(EXAMPLES)
 	rm -f *.o $(ROOTEXAMPLES)
 	rm -f *.o $(EXAMPLES_FFTW)
-	rm -f *.root 
+	rm -f *.root
