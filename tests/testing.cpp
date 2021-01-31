@@ -10,6 +10,32 @@ int main() {
   static_assert(m.unwrap == 123459 && m.has_value);
 
   pft::println(stdout, "[PASSED] ", "Maybe tests");
+
+  ////////////////////////////////////////////////
+  // Matrix
+  ////////////////////////////////////////////////
+
+  double in[][3] = {
+      {12, -51, 4}, {6, 167, -68}, {-4, 24, -41}, {-1, 1, 0}, {2, 0, 3},
+  };
+
+  pft::Matrix<f64> mat_from_array(in);
+
+  assert(mat_from_array(0, 0) == 12);
+  assert(mat_from_array(0, 1) == -51);
+  assert(mat_from_array(0, 2) == 4);
+  assert(mat_from_array(1, 0) == 6);
+  assert(mat_from_array(1, 1) == 167);
+  assert(mat_from_array(1, 2) == -68);
+  assert(mat_from_array(2, 0) == -4);
+  assert(mat_from_array(2, 1) == 24);
+  assert(mat_from_array(2, 2) == -41);
+  assert(mat_from_array(3, 0) == -1);
+  assert(mat_from_array(3, 1) == 1);
+  assert(mat_from_array(3, 2) == 0);
+  assert(mat_from_array(4, 0) == 2);
+  assert(mat_from_array(4, 1) == 0);
+  assert(mat_from_array(4, 2) == 3);
   ////////////////////////////////////////////////
   // filter
   ////////////////////////////////////////////////

@@ -409,9 +409,9 @@ struct Matrix {
     data = new T[rows * cols]();
     std::memcpy(data, m.data, sizeof(T) * rows * cols);
   }
-  // Matrix(Matrix<T>&& m) : rows(m.rows), cols(m.cols), data(std::move(m.data)) {}
+
   template <std::size_t r, std::size_t c>
-  constexpr Matrix(T (&m)[r][c]) : Matrix(r, c) {
+  constexpr Matrix(const T (&m)[r][c]) : Matrix(r, c) {
     for (std::size_t i = 0; i < rows; ++i) {
       for (std::size_t j = 0; j < cols; ++j) {
         (*this)(i, j) = m[i][j];
@@ -516,7 +516,13 @@ struct Matrix {
 //////////////////////////////////////////////////
 // Printers
 //////////////////////////////////////////////////
-static inline void print1(FILE* stream, char x) { fprintf(stream, "%c", x); }
+static inline void print1(FILE* stream, char x) { fputc(x, stream); }
+static inline void print1(FILE* stream, char* x) {
+  fwrite(x, 1, std::strlen(x), stream);
+}
+static inline void print1(FILE* stream, const char* x) {
+  fwrite(x, 1, std::strlen(x), stream);
+}
 
 static inline void print1(FILE* stream, u32 x) { fprintf(stream, "%u", x); }
 static inline void print1(FILE* stream, u64 x) { fprintf(stream, "%lu", x); }
@@ -581,8 +587,13 @@ void print1(FILE* stream, const Matrix<T>& mat) {
 }
 
 template <typename... Types>
-static inline void println(FILE* stream, Types... args) {
+static inline void print(FILE* stream, Types... args) {
   (print1(stream, args), ...);
+}
+
+template <typename... Types>
+static inline void println(FILE* stream, Types... args) {
+  print(stream, args...);
   print1(stream, '\n');
 }
 
