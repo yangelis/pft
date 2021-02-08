@@ -770,9 +770,10 @@ static inline std::vector<T> take(const std::vector<T>& vec,
 template <typename T>
 static inline std::vector<T> take(const std::vector<T>& vec,
                                   const Slice& slice) {
-  return std::vector<T>{
-      vec.begin() + slice.start,
-      vec.begin() + (slice.stop >= vec.size() ? vec.size() : slice.stop)};
+  return std::vector<T>{vec.begin() + slice.start,
+                        vec.begin() + ((size_t)slice.stop >= vec.size()
+                                           ? vec.size()
+                                           : slice.stop)};
 }
 
 template <typename T>

@@ -90,18 +90,18 @@ int main() {
   ////////////////////////////////////////////////
   // factorial
   ////////////////////////////////////////////////
-  assert(factorial(10) == 3628800.0);
-  assert(factorial(11) == 39916800.0);
-  assert(factorial(12) == 479001600.0);
-  assert(factorial(13) == 6227020800.0);
-  assert(factorial(14) == 87178291200.0);
-  assert(factorial(15) == 1307674368000.0);
-  assert(factorial(16) == 20922789888000.0);
-  assert(factorial(17) == 355687428096000.0);
-  assert(factorial(18) == 6402373705728000.0);
-  assert(factorial(19) == 121645100408832000.0);
-  assert(factorial(20) == 2432902008176640000.0);
-  assert(factorial(21) == 51090942171709440000.0);
+  assert(utils::factorial(10) == 3628800.0);
+  assert(utils::factorial(11) == 39916800.0);
+  assert(utils::factorial(12) == 479001600.0);
+  assert(utils::factorial(13) == 6227020800.0);
+  assert(utils::factorial(14) == 87178291200.0);
+  assert(utils::factorial(15) == 1307674368000.0);
+  assert(utils::factorial(16) == 20922789888000.0);
+  assert(utils::factorial(17) == 355687428096000.0);
+  assert(utils::factorial(18) == 6402373705728000.0);
+  assert(utils::factorial(19) == 121645100408832000.0);
+  assert(utils::factorial(20) == 2432902008176640000.0);
+  assert(utils::factorial(21) == 51090942171709440000.0);
   pft::println(stdout, "[PASSED] ", "factorial tests");
 
   ////////////////////////////////////////////////

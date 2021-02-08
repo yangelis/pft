@@ -42,7 +42,7 @@ int main() {
 
   pft::println(stdout, "From 2d array\n", mat_from_array);
 
-  auto [Q, R] = QRDecomposition(mat_from_array);
+  auto [Q, R] = utils::QRDecomposition(mat_from_array);
 
   pft::println(stdout, "Q:\n", Q);
   pft::println(stdout, "R:\n", R);
@@ -51,7 +51,7 @@ int main() {
   double arr2[][2] = {{4, 3}, {6, 3}};
 
   pft::Matrix<f64> mat_for_lu(arr2);
-  LUdecomposition lumat(mat_for_lu);
+  utils::LUdecomposition lumat(mat_for_lu);
 
   pft::println(stdout, lumat.lu);
 

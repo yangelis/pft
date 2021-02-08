@@ -1,10 +1,10 @@
-CXXFLAGS      := -std=c++17 -I../ -fno-exceptions -Wall -Wextra -Wshadow \
+CXXFLAGS      := -std=c++17 -I../ -Wall -Wextra -Wshadow \
                -Wpedantic -Wcast-align -ggdb -O0
 LIBS          :=
 ROOTCXXFLAGS  := $(shell root-config --cflags)
 ROOTLIBS      := $(shell root-config --ldflags --libs) -lCore -lMathCore
 ROOTEXAMPLES  := file2tree
-EXAMPLES_FFTW := peak_finding sg_filter ffts
+EXAMPLES_FFTW := peak_finding sg_filter ffts fftw_wrapper
 EXAMPLES      := matrix_test argparse readfile gol
 
 .PHONY: all

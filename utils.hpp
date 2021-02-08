@@ -5,9 +5,10 @@
 
 using pft::Maybe;
 
+namespace utils {
 // so that we dont have to include complex in pft
 template <typename T>
-static inline auto abs_complex(std::vector<std::complex<T>>& vec) {
+static inline auto abs_complex(const std::vector<std::complex<T>>& vec) {
   auto abs_lambda = [](const auto& x) { return std::abs(x); };
   return pft::map(abs_lambda, vec);
 }
@@ -598,11 +599,10 @@ auto savgol_coeffs(const i32 np, const i32 nl, const i32 nr, const i32 ld,
 #include <fftw3.h>
 
 struct FFTW_R2C_1D {
-
   size_t input_size{0};
   f64* const input_buffer;
   size_t output_size{0};
-  fftw_complex* output_buffer;
+  fftw_complex* output_buffer = nullptr;
 
   FFTW_R2C_1D(size_t fft_size)
       : input_size(fft_size), input_buffer(fftw_alloc_real(fft_size)),
@@ -618,6 +618,10 @@ struct FFTW_R2C_1D {
     fftw_free(output_buffer);
   }
 
+  void set_input(const std::vector<f64>& vec) {
+    memcpy(input_buffer, vec.data(), sizeof(f64) * vec.size());
+  }
+
   void set_input_zeropadded(const f64* buffer, size_t size) {
     assert(size <= input_size);
     memcpy(input_buffer, buffer, sizeof(f64) * size);
@@ -628,15 +632,63 @@ struct FFTW_R2C_1D {
     set_input_zeropadded(&vec[0], vec.size());
   }
 
-  void run() { fftw_execute(p); }
+  void execute() { fftw_execute(p); }
 
-  // fftw_complex* get_output() { return output_buffer; }
-  auto get_output() -> std::vector<std::complex<f64>> {
+  fftw_complex* get_output_as_array() { return output_buffer; }
+
+  auto get_output_as_vec() -> std::vector<std::complex<f64>> {
     std::vector<std::complex<f64>> ret(output_size);
 
     for (size_t i = 0; i < output_size; ++i) {
       ret[i] = {output_buffer[i][0], output_buffer[i][1]};
     }
+    return ret;
+  }
+
+private:
+  fftw_plan p;
+};
+
+struct FFTW_C2R_1D {
+  size_t input_size{0};
+  fftw_complex* const input_buffer;
+  size_t output_size{0};
+  f64* output_buffer;
+
+  FFTW_C2R_1D(size_t fft_size)
+      : input_size(fft_size), input_buffer(fftw_alloc_complex(fft_size)),
+        output_size(input_size), output_buffer(fftw_alloc_real(output_size)) {
+    p = fftw_plan_dft_c2r_1d(input_size, input_buffer, output_buffer,
+                             FFTW_ESTIMATE);
+  }
+
+  ~FFTW_C2R_1D() {
+    fftw_destroy_plan(p);
+    fftw_free(input_buffer);
+    fftw_free(output_buffer);
+  }
+
+  void set_input_zeropadded(const fftw_complex* buffer, size_t size) {
+    assert(size <= input_size);
+    memcpy(input_buffer, buffer, sizeof(fftw_complex) * size);
+    memset(&input_buffer[size], 0, sizeof(fftw_complex) * (input_size - size));
+  }
+
+  // void set_input_zeropadded(const std::vector<std::complec<f64>>& vec) {
+  //   set_input_zeropadded(&vec[0], vec.size());
+  // }
+
+  void execute() { fftw_execute(p); }
+
+  auto get_output_as_vec() -> std::vector<f64> {
+    std::vector<f64> ret(output_buffer, output_buffer + output_size);
+    return ret;
+  }
+
+  auto get_normalised_output_as_vec() -> std::vector<f64> {
+    auto ret =
+        pft::map([&](const auto& x) { return x / output_size; },
+                 std::vector<f64>(output_buffer, output_buffer + output_size));
     return ret;
   }
 
@@ -695,7 +747,13 @@ auto convln(const std::vector<f64>& input, const std::vector<f64>& kernel)
   }
 
   std::vector<f64> ret(output, output + n);
+  fftw_destroy_plan(p);
+  fftw_free(input_fft);
+  fftw_free(kernel_fft);
+  fftw_free(fixed_product);
+  fftw_free(output);
   return ret;
 }
 #endif
+} // namespace utils
 #endif // UTILS_H_

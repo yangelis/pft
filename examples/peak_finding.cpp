@@ -26,8 +26,8 @@ int main() {
   auto graph = new TGraph(ys.size(), xs.data(), ys.data());
 
   Maybe<pair<double, double>> heights = {true, {0.02, 1.0}};
-  auto peaks                          = find_peaks(ys, heights);
-  auto peaks_properties               = peak_widths(ys, peaks, 0.90);
+  auto peaks                          = utils::find_peaks(ys, heights);
+  auto peaks_properties               = utils::peak_widths(ys, peaks, 0.90);
   // auto [widths, widths_heights, left_p, right_p] = peak_widths(ys, peaks, 0.90);
 
   auto graph_peaks = new TGraph();
