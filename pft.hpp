@@ -21,6 +21,7 @@
 // ============================================================
 //
 // ChangeLog:
+//   0.0.8    pad_right_until
 //   0.0.7    linspace, pad_left, pad_right
 //            zip_with, zip_to_pair
 //            remove zip,
@@ -985,6 +986,32 @@ static inline auto pad(const std::vector<T>& in, std::size_t padwidth = 1,
   std::vector<T> out(out_size, pad_value);
   std::transform(std::cbegin(in), std::cend(in), std::begin(out) + padwidth,
                  [](const auto& x) { return x; });
+
+  return out;
+}
+
+/// Pad a vector from the right with a slice of its elements till that vector
+/// has length of max_len
+template <typename T>
+static inline auto pad_right_until(const std::vector<T>& input,
+                                   const pft::Slice& slice, std::size_t max_len)
+    -> std::vector<T> {
+  std::vector<T> out;
+  out.reserve(max_len);
+  std::copy(std::cbegin(input), std::cend(input), std::back_inserter(out));
+  const size_t len_missing       = max_len - input.size();
+  const size_t n_iterations      = len_missing / slice.size();
+  const size_t elements_left_out = len_missing - n_iterations * slice.size();
+  for (size_t i = 0; i < n_iterations; ++i) {
+    std::copy(std::cbegin(input) + slice.start, std::cbegin(input) + slice.stop,
+              std::back_inserter(out));
+  }
+
+  if (elements_left_out != 0) {
+    std::copy(std::cbegin(input) + slice.start,
+              std::cbegin(input) + slice.start + elements_left_out,
+              std::back_inserter(out));
+  }
 
   return out;
 }

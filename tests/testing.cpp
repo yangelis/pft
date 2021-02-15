@@ -1,6 +1,5 @@
 #include "../pft.hpp"
 #include "../utils.hpp"
-#include <numeric>
 
 int main() {
   ////////////////////////////////////////////////
@@ -15,7 +14,7 @@ int main() {
   // Matrix
   ////////////////////////////////////////////////
 
-  double in[][3] = {
+  const f64 in[][3] = {
       {12, -51, 4}, {6, 167, -68}, {-4, 24, -41}, {-1, 1, 0}, {2, 0, 3},
   };
 
@@ -36,11 +35,13 @@ int main() {
   assert(mat_from_array(4, 0) == 2);
   assert(mat_from_array(4, 1) == 0);
   assert(mat_from_array(4, 2) == 3);
+
+  pft::println(stdout, "[PASSED] ", "Matrix tests");
   ////////////////////////////////////////////////
   // filter
   ////////////////////////////////////////////////
-  auto xx       = pft::arange(0, 10);
-  auto filtered = pft::filter([](const auto x) { return x > 5; }, xx);
+  const auto xx       = pft::arange(0, 10);
+  const auto filtered = pft::filter([](const auto x) { return x > 5; }, xx);
   for (std::size_t i = 0; i < filtered.size(); ++i) {
     assert(filtered[i] == (i32)i + 6);
   }
@@ -53,16 +54,16 @@ int main() {
   auto to_int    = [](const pft::StringView x) { return stoi(std::string(x)); };
   auto to_double = [](const pft::StringView x) { return stod(std::string(x)); };
 
-  std::vector<pft::StringView> num_test = {"123.456", "9999.9", "69.420"};
-  std::vector<f64> nums_double          = {123.456, 9999.9, 69.420};
-  std::vector<i32> nums_ints            = {123, 9999, 69};
+  const std::vector<pft::StringView> num_test = {"123.456", "9999.9", "69.420"};
+  const std::vector<f64> nums_double          = {123.456, 9999.9, 69.420};
+  const std::vector<i32> nums_ints            = {123, 9999, 69};
 
   assert(nums_double == pft::map(to_double, num_test));
   assert(nums_ints == pft::map(to_int, num_test));
 
-  auto ones = std::vector<i32>(10, 1);
-  auto twos = std::vector<i32>(10, 2);
-  auto d    = pft::map([](const auto&... args) { return (args + ...); }, ones,
+  const auto ones = std::vector<i32>(10, 1);
+  const auto twos = std::vector<i32>(10, 2);
+  auto d = pft::map([](const auto&... args) { return (args + ...); }, ones,
                     ones, ones, twos);
 
   for (std::size_t i = 0; i < d.size(); ++i) {
@@ -107,9 +108,9 @@ int main() {
   ////////////////////////////////////////////////
   // arange
   ////////////////////////////////////////////////
-  auto big_vec = pft::arange(0, 1000000);
+  const auto big_vec = pft::arange(0, 1000000);
   std::vector<i32> vec_iota(big_vec.size());
-  std::iota(vec_iota.begin(), vec_iota.end(), 0);
+  std::iota(std::begin(vec_iota), std::end(vec_iota), 0);
   for (i32 i = 0; i < static_cast<i32>(big_vec.size()); ++i) {
     assert(big_vec[i] == i);
   }
@@ -118,7 +119,7 @@ int main() {
   ////////////////////////////////////////////////
   // zip_to_pair, zip_with
   ////////////////////////////////////////////////
-  auto xx_reversed = pft::arange(9, -1, -1);
+  const auto xx_reversed = pft::arange(9, -1, -1);
   for (const auto& ii : pft::zip_to_pair(xx, xx_reversed)) {
     assert(ii.first + ii.second == 9);
   }
@@ -140,26 +141,42 @@ int main() {
   ////////////////////////////////////////////////
   // pad_right, pad_left, pad
   ////////////////////////////////////////////////
-  auto paded_xx_right = pft::pad_right(xx, 10, 69);
+  const auto paded_xx_right = pft::pad_right(xx, 10, 69);
   for (size_t i = xx.size(); i < 10 + xx.size(); ++i) {
     assert(paded_xx_right[i] == 69);
   }
 
-  auto paded_xx_left = pft::pad_left(xx, 10, 69);
+  const auto paded_xx_left = pft::pad_left(xx, 10, 69);
   for (size_t i = 0; i < 10; ++i) {
     assert(paded_xx_left[i] == 69);
   }
 
-  auto paded_xx = pft::pad(xx, 10, 69);
+  const auto paded_xx = pft::pad(xx, 10, 69);
   for (size_t i = 0; i < 10; ++i) {
     assert(paded_xx[i] == 69);
     assert(paded_xx[i + 10 + xx.size()] == 69);
   }
 
-  pft::println(stdout, "[PASSED] ", "pad tests");
+  const auto paded_xx_until = pft::pad_right_until(xx, pft::Slice{1, 5}, 33);
+  assert(paded_xx_until.size() == 33);
+  for (size_t i = 0; i < xx.size(); ++i) {
+    assert(paded_xx_until[i] == xx[i]);
+  }
 
+  pft::println(stdout, "[PASSED] ", "pad tests");
   ////////////////////////////////////////////////
-  // chuks
+  // chunks
   ////////////////////////////////////////////////
+  const auto vec_to_be_chunked = pft::arange(0, 8);
+  const auto chunked_vec       = pft::chunks(3, vec_to_be_chunked);
+  const auto check_chunk1      = chunked_vec[0] == std::vector<i32>{0, 1, 2};
+  const auto check_chunk2      = chunked_vec[1] == std::vector<i32>{3, 4, 5};
+  const auto check_chunk3      = chunked_vec[2] == std::vector<i32>{6, 7};
+  assert(check_chunk1);
+  assert(check_chunk2);
+  assert(check_chunk3);
+
+  pft::println(stdout, "[PASSED] ", "chunking tests");
+
   return 0;
 }
