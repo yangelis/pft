@@ -16,7 +16,7 @@ static inline auto abs_complex(const std::vector<std::complex<T>>& vec) {
 auto peak_prominences(const std::vector<f64>& xs, const std::vector<i32>& peaks,
                       i32 wlen)
     -> std::tuple<std::vector<f64>, std::vector<i32>, std::vector<i32>> {
-  const size_t peaks_size = peaks.size();
+  const std::size_t peaks_size = peaks.size();
 
   std::vector<f64> prominences(peaks_size);
   std::vector<i32> left_bases(peaks_size);
@@ -24,7 +24,7 @@ auto peak_prominences(const std::vector<f64>& xs, const std::vector<i32>& peaks,
 
   f64 left_min, right_min;
   i32 peak, i_min, i_max, i;
-  for (size_t pi = 0; pi < peaks_size; ++pi) {
+  for (std::size_t pi = 0; pi < peaks_size; ++pi) {
     peak  = peaks[pi];
     i_min = 0;
     i_max = xs.size() - 1;
@@ -74,8 +74,8 @@ struct Peak {
 auto peak_widths(const std::vector<f64>& signal,
                  const std::vector<i32>& peaks_indices, f64 rel_height)
     -> std::vector<Peak> {
-  const size_t n_of_peaks = peaks_indices.size();
-  const i32 wlen          = -1;
+  const std::size_t n_of_peaks = peaks_indices.size();
+  const i32 wlen               = -1;
   assert(rel_height > 0);
   const auto [prominences, left_bases, right_bases] =
       peak_prominences(signal, peaks_indices, wlen);
@@ -87,7 +87,7 @@ auto peak_widths(const std::vector<f64>& signal,
   f64 height;
   i32 i_min, i_max, peak_index;
 
-  for (size_t i = 0; i < n_of_peaks; ++i) {
+  for (std::size_t i = 0; i < n_of_peaks; ++i) {
     i_min      = left_bases[i];
     i_max      = right_bases[i];
     peak_index = peaks_indices[i];
@@ -126,7 +126,7 @@ auto peak_widths(const std::vector<f64>& signal,
   }
 
   std::vector<Peak> widths_vec(n_of_peaks);
-  for (size_t i = 0; i < n_of_peaks; ++i) {
+  for (std::size_t i = 0; i < n_of_peaks; ++i) {
     widths_vec[i] = {peaks_indices[i], signal[peaks_indices[i]],
                      widths[i],        width_heights[i],
                      left_ips[i],      right_ips[i]};
@@ -137,14 +137,14 @@ auto peak_widths(const std::vector<f64>& signal,
 template <typename T>
 auto local_maxima(std::vector<T> x)
     -> std::tuple<std::vector<i32>, std::vector<i32>, std::vector<i32>> {
-  const size_t n = x.size();
+  const std::size_t n = x.size();
   std::vector<i32> midpoints(n / 2, 0);
   std::vector<i32> left_edges(n / 2, 0);
   std::vector<i32> right_edges(n / 2, 0);
-  size_t m = 0; // index pointer to the end
+  std::size_t m = 0; // index pointer to the end
 
-  size_t i   = 1;
-  auto i_max = n - 1;
+  std::size_t i = 1;
+  auto i_max    = n - 1;
 
   while (i < i_max) {
     if (x[i - 1] < x[i]) {
@@ -176,13 +176,13 @@ auto select_by_property(std::vector<T> p, T pmin, T pmax) -> std::vector<i32> {
   std::vector<i32> keep(p.size(), 1);
 
   // if (pmin.has_value) {
-  for (size_t i = 0; i < p.size(); ++i) {
+  for (std::size_t i = 0; i < p.size(); ++i) {
     keep[i] &= pmin <= p[i];
   }
   // }
 
   // if (pmax.has_value) {
-  for (size_t i = 0; i < p.size(); ++i) {
+  for (std::size_t i = 0; i < p.size(); ++i) {
     keep[i] &= p[i] <= pmax;
   }
   // }
@@ -271,7 +271,7 @@ auto factorial(const i64& n) -> f64 {
   if (init) {
     init     = false;
     table[0] = 1;
-    for (size_t i = 1; i < 171; ++i) {
+    for (std::size_t i = 1; i < 171; ++i) {
       table[i] = (f64)i * table[i - 1];
     }
   }
@@ -285,17 +285,17 @@ auto vandermonde(i64 halfWindow, i64 polyDeg) -> pft::Matrix<T> {
   // arange return an exclusive range
   auto x = pft::arange<T>(-halfWindow, halfWindow + 1);
 
-  size_t n = polyDeg + 1;
-  auto m   = x.size();
+  std::size_t n = polyDeg + 1;
+  auto m        = x.size();
 
   pft::Matrix<T> V(m, n);
 
-  for (size_t i = 0; i < m; ++i) {
+  for (std::size_t i = 0; i < m; ++i) {
     V(i, 0) = T(1);
   }
 
-  for (size_t j = 1; j < n; ++j) {
-    for (size_t i = 0; i < m; ++i) {
+  for (std::size_t j = 1; j < n; ++j) {
+    for (std::size_t i = 0; i < m; ++i) {
       V(i, j) = x[i] * V(i, j - 1);
     }
   }
@@ -316,8 +316,8 @@ auto SG(i64 halfWindow, i64 polyDeg) -> pft::Matrix<T> {
 
   auto n = SG.rows;
   auto m = SG.cols;
-  for (size_t i = 0; i < n; ++i) {
-    for (size_t j = 0; j < m; ++j) {
+  for (std::size_t i = 0; i < n; ++i) {
+    for (std::size_t j = 0; j < m; ++j) {
       SG(i, j) *= factorial(i);
     }
   }
@@ -331,7 +331,7 @@ auto vmadd(const std::vector<T>& a, const std::vector<T>& b, T s)
     -> std::vector<T> {
   const auto n = a.size();
   std::vector<T> ret(n);
-  for (size_t i = 0; i < n; ++i) {
+  for (std::size_t i = 0; i < n; ++i) {
     ret[i] = a[i] + s * b[i];
   }
 
@@ -343,12 +343,12 @@ auto compute_householder_factor(const std::vector<T>& v) -> pft::Matrix<T> {
   const auto n = v.size();
   pft::Matrix<T> ret(n, n);
 
-  for (size_t i = 0; i < n; ++i) {
-    for (size_t j = 0; j < n; ++j) {
+  for (std::size_t i = 0; i < n; ++i) {
+    for (std::size_t j = 0; j < n; ++j) {
       ret(i, j) = -2 * v[i] * v[j];
     }
   }
-  for (size_t i = 0; i < n; ++i) {
+  for (std::size_t i = 0; i < n; ++i) {
     ret(i, i) += 1;
   }
   return ret;
@@ -375,15 +375,15 @@ auto QRDecomposition(const pft::Matrix<T>& mat)
   pft::Matrix<T> Q;
   pft::Matrix<T> R;
 
-  const size_t m = mat.rows;
-  const size_t n = mat.cols;
+  const std::size_t m = mat.rows;
+  const std::size_t n = mat.cols;
 
   // vector if factors Q1. Q2.... Qm
   std::vector<pft::Matrix<T>> qv(m);
 
   pft::Matrix<T> z = mat;
   pft::Matrix<T> z1;
-  for (size_t k = 0; k < n && k < m - 1; ++k) {
+  for (std::size_t k = 0; k < n && k < m - 1; ++k) {
     std::vector<T> e(m, 0), x(m, 0);
     f64 a;
 
@@ -397,7 +397,7 @@ auto QRDecomposition(const pft::Matrix<T>& mat)
       a = -a;
     }
 
-    for (size_t i = 0; i < m; ++i) {
+    for (std::size_t i = 0; i < m; ++i) {
       e[i] = (i == k) ? 1 : 0;
     }
 
@@ -410,7 +410,7 @@ auto QRDecomposition(const pft::Matrix<T>& mat)
   }
   Q = qv[0];
 
-  for (size_t i = 1; i < n && i < m - 1; ++i) {
+  for (std::size_t i = 1; i < n && i < m - 1; ++i) {
     z1 = qv[i].mult(Q);
     Q  = z1;
   }
@@ -421,7 +421,7 @@ auto QRDecomposition(const pft::Matrix<T>& mat)
 
 struct LUdecomposition {
   using Mat_t = pft::Matrix<f64>;
-  size_t n;
+  std::size_t n;
   Mat_t lu;
   std::vector<i32> indices;
   f64 d;
@@ -437,7 +437,7 @@ LUdecomposition::LUdecomposition(const Mat_t& a)
     : n(a.rows), lu(a), indices(n) {
 
   constexpr f64 tiny = 1.0e-40;
-  size_t i, imax, j, k;
+  std::size_t i, imax, j, k;
   f64 big, temp;
   std::vector<f64> vv(n, 0.0);
   d = 1.0;
@@ -487,14 +487,14 @@ LUdecomposition::LUdecomposition(const Mat_t& a)
 auto LUdecomposition::solve(const std::vector<f64>& b) -> std::vector<f64> {
   std::vector<f64> x(b);
 
-  size_t ii = 0, ip, j;
+  std::size_t ii = 0, ip, j;
   f64 sum;
   if (b.size() != n || x.size() != n) {
     fprintf(stderr, "Bad sizes\n");
     exit(1);
   }
 
-  for (size_t i = 0; i < n; ++i) {
+  for (std::size_t i = 0; i < n; ++i) {
     ip    = indices[i];
     sum   = x[ip];
     x[ip] = x[i];
@@ -520,9 +520,9 @@ auto LUdecomposition::solve(const std::vector<f64>& b) -> std::vector<f64> {
 }
 
 void LUdecomposition::solve(Mat_t& b, Mat_t& x) {
-  size_t i, m = b.cols;
+  std::size_t i, m = b.cols;
   std::vector<f64> xx(n);
-  for (size_t j = 0; j < m; ++j) {
+  for (std::size_t j = 0; j < m; ++j) {
     for (i = 0; i < n; ++i) {
       xx[i] = b(i, j);
     }
@@ -577,7 +577,7 @@ auto savgol_coeffs(const i32 np, const i32 nl, const i32 nr, const i32 ld,
   b[ld] = 1.0;
   b     = alud.solve(b);
 
-  size_t i = 0;
+  std::size_t i = 0;
   std::vector<f64> c(np, 0.0);
   for (k = -nl; k <= nr; ++k) {
     sum = b[0];
@@ -599,12 +599,12 @@ auto savgol_coeffs(const i32 np, const i32 nl, const i32 nr, const i32 ld,
 #include <fftw3.h>
 
 struct FFTW_R2C_1D {
-  size_t input_size{0};
+  std::size_t input_size{0};
   f64* const input_buffer;
-  size_t output_size{0};
+  std::size_t output_size{0};
   fftw_complex* output_buffer = nullptr;
 
-  FFTW_R2C_1D(size_t fft_size)
+  FFTW_R2C_1D(std::size_t fft_size)
       : input_size(fft_size), input_buffer(fftw_alloc_real(fft_size)),
         output_size(input_size / 2 + 1),
         output_buffer(fftw_alloc_complex(output_size)) {
@@ -622,7 +622,7 @@ struct FFTW_R2C_1D {
     memcpy(input_buffer, vec.data(), sizeof(f64) * vec.size());
   }
 
-  void set_input_zeropadded(const f64* buffer, size_t size) {
+  void set_input_zeropadded(const f64* buffer, std::size_t size) {
     assert(size <= input_size);
     memcpy(input_buffer, buffer, sizeof(f64) * size);
     memset(&input_buffer[size], 0, sizeof(f64) * (input_size - size));
@@ -632,14 +632,21 @@ struct FFTW_R2C_1D {
     set_input_zeropadded(&vec[0], vec.size());
   }
 
+  void set_input_pad_with_itself(const std::vector<f64>& vec,
+                                 pft::Slice slice) {
+    const auto buffer = pft::pad_right(vec, slice);
+    assert(buffer.size() == input_size);
+    memcpy(input_buffer, buffer.data(), sizeof(f64) * buffer.size());
+  }
+
   void execute() { fftw_execute(p); }
 
-  fftw_complex* get_output_as_array() { return output_buffer; }
+  auto get_output_as_array() -> fftw_complex* { return output_buffer; }
 
-  auto get_output_as_vec() -> std::vector<std::complex<f64>> {
+  auto get_output_as_vec() const -> std::vector<std::complex<f64>> {
     std::vector<std::complex<f64>> ret(output_size);
 
-    for (size_t i = 0; i < output_size; ++i) {
+    for (std::size_t i = 0; i < output_size; ++i) {
       ret[i] = {output_buffer[i][0], output_buffer[i][1]};
     }
     return ret;
@@ -650,12 +657,12 @@ private:
 };
 
 struct FFTW_C2R_1D {
-  size_t input_size{0};
+  std::size_t input_size{0};
   fftw_complex* const input_buffer;
-  size_t output_size{0};
+  std::size_t output_size{0};
   f64* output_buffer;
 
-  FFTW_C2R_1D(size_t fft_size)
+  FFTW_C2R_1D(std::size_t fft_size)
       : input_size(fft_size), input_buffer(fftw_alloc_complex(fft_size)),
         output_size(input_size), output_buffer(fftw_alloc_real(output_size)) {
     p = fftw_plan_dft_c2r_1d(input_size, input_buffer, output_buffer,
@@ -668,7 +675,7 @@ struct FFTW_C2R_1D {
     fftw_free(output_buffer);
   }
 
-  void set_input_zeropadded(const fftw_complex* buffer, size_t size) {
+  void set_input_zeropadded(const fftw_complex* buffer, std::size_t size) {
     assert(size <= input_size);
     memcpy(input_buffer, buffer, sizeof(fftw_complex) * size);
     memset(&input_buffer[size], 0, sizeof(fftw_complex) * (input_size - size));
@@ -680,13 +687,13 @@ struct FFTW_C2R_1D {
 
   void execute() { fftw_execute(p); }
 
-  auto get_output_as_vec() -> std::vector<f64> {
+  auto get_output_as_vec() const -> std::vector<f64> {
     std::vector<f64> ret(output_buffer, output_buffer + output_size);
     return ret;
   }
 
-  auto get_normalised_output_as_vec() -> std::vector<f64> {
-    auto ret =
+  auto get_normalised_output_as_vec() const -> std::vector<f64> {
+    const auto ret =
         pft::map([&](const auto& x) { return x / output_size; },
                  std::vector<f64>(output_buffer, output_buffer + output_size));
     return ret;
@@ -702,7 +709,7 @@ auto convln(const std::vector<f64>& input, const std::vector<f64>& kernel)
   const auto n = input.size();
   const auto m = kernel.size();
 
-  const size_t padded_length = input.size() + kernel.size() - 1;
+  const std::size_t padded_length = input.size() + kernel.size() - 1;
 
   // // zero pad input
   auto padded_input = pft::pad_right(input, padded_length - n);
@@ -728,7 +735,7 @@ auto convln(const std::vector<f64>& input, const std::vector<f64>& kernel)
   fftw_complex* fixed_product = nullptr;
   fixed_product               = fftw_alloc_complex(padded_length);
 
-  for (size_t i = 0; i < padded_length / 2; ++i) {
+  for (std::size_t i = 0; i < padded_length / 2; ++i) {
     fixed_product[i][0] =
         input_fft[i][0] * kernel_fft[i][0] - input_fft[i][1] * kernel_fft[i][1];
     fixed_product[i][1] =
@@ -742,7 +749,7 @@ auto convln(const std::vector<f64>& input, const std::vector<f64>& kernel)
   fftw_execute(p);
 
   // normalize output due to fftw scaling
-  for (size_t i = 0; i < n; ++i) {
+  for (std::size_t i = 0; i < n; ++i) {
     output[i] /= padded_length;
   }
 
