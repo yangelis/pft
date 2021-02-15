@@ -159,7 +159,9 @@ namespace pft {
 struct Slice {
   i64 start;
   i64 stop;
-  constexpr auto size() const -> std::size_t { return stop - start; }
+  constexpr auto size() const -> std::size_t {
+    return static_cast<std::size_t>(stop - start);
+  }
 };
 
 // Maybe and StringView are based on https://github.com/rexim/aids
@@ -299,7 +301,8 @@ static inline StringView& triml(StringView& s) {
   return s;
 }
 
-static inline std::vector<StringView> split_by(StringView view, char delim) {
+static inline auto split_by(StringView view, char delim)
+    -> std::vector<StringView> {
   view = trimr(view);
   std::vector<StringView> ret;
   while (!view.empty()) {
@@ -314,9 +317,10 @@ static inline std::vector<StringView> split_by(StringView view, char delim) {
   return ret;
 }
 
-static inline std::vector<StringView> split_by(std::string& str, char delim) {
+static inline auto split_by(std::string& str, char delim)
+    -> std::vector<StringView> {
   std::vector<StringView> vec;
-  StringView temp{str.data(), str.size()};
+  StringView temp{str};
   StringView aug = {};
   while (!temp.empty()) {
     aug = temp.chop_by_delim(delim);
@@ -335,7 +339,8 @@ static inline StringView string_as_sv(const std::string& s) {
 
 static inline i32 to_int(StringView s) { return std::stoi(std::string(s)); }
 
-static inline Maybe<StringView> read_file_as_string_view(const char* filename) {
+static inline auto read_file_as_string_view(const char* filename)
+    -> Maybe<StringView> {
   FILE* f = fopen(filename, "rb");
   if (f == nullptr) {
     return {};
@@ -367,12 +372,12 @@ static inline Maybe<StringView> read_file_as_string_view(const char* filename) {
   }
 
   fclose(f);
-  return {true,
-          {static_cast<const char*>(data), static_cast<std::size_t>(size)}};
+  return Some(StringView{static_cast<const char*>(data),
+                         static_cast<std::size_t>(size)});
 }
 
-static inline std::vector<StringView> readlines(const char* filename,
-                                                const char delim = '\n') {
+static inline auto readlines(const char* filename, const char delim = '\n')
+    -> std::vector<StringView> {
 
   auto file   = read_file_as_string_view(filename);
   auto result = split_by(file.unwrap, delim);
@@ -384,7 +389,8 @@ static inline void ignore_header_lines(std::vector<StringView>& vec,
   vec.erase(vec.begin(), vec.begin() + lines);
 }
 
-static inline std::vector<float> as_floats(const std::vector<StringView>& vec) {
+static inline auto as_floats(const std::vector<StringView>& vec)
+    -> std::vector<float> {
   std::vector<float> buffer(vec.size());
 
   for (std::size_t i = 0; i < vec.size(); ++i) {
@@ -452,7 +458,7 @@ struct Matrix {
     }
   }
 
-  constexpr T trace() const {
+  constexpr auto trace() const -> T {
     T tr = 0;
     if (cols == rows) {
       for (std::size_t i = 0; i < cols; ++i) {
@@ -464,7 +470,7 @@ struct Matrix {
     }
   }
 
-  constexpr Matrix<T> transpose() const {
+  constexpr auto transpose() const -> Matrix<T> {
     Matrix<T> result(cols, rows);
     for (std::size_t i = 0; i < cols; ++i) {
       for (std::size_t j = 0; j < rows; ++j) {
@@ -474,7 +480,7 @@ struct Matrix {
     return result;
   }
 
-  constexpr Matrix<T> mult(const Matrix<T>& b) {
+  constexpr auto mult(const Matrix<T>& b) -> Matrix<T> {
     if (cols != b.rows) {
       exit(1);
     }
@@ -489,7 +495,7 @@ struct Matrix {
     return ret;
   }
 
-  constexpr std::vector<T> getColumn(std::size_t c) const {
+  constexpr auto getColumn(std::size_t c) const -> std::vector<T> {
     std::vector<T> ret(rows);
     for (std::size_t i = 0; i < rows; ++i) {
       ret[i] = (*this)(i, c);
@@ -497,7 +503,7 @@ struct Matrix {
     return ret;
   }
 
-  constexpr Matrix<T> GetMinor(std::size_t d) const {
+  constexpr auto GetMinor(std::size_t d) const -> Matrix<T> {
     Matrix<T> ret(rows, cols);
     for (std::size_t i = 0; i < d; ++i) {
       ret(i, i) = 1;
@@ -591,6 +597,8 @@ static inline void print(FILE* stream, Types... args) {
   (print1(stream, args), ...);
 }
 
+static inline void println(FILE* stream) { print1(stream, '\n'); }
+
 template <typename... Types>
 static inline void println(FILE* stream, Types... args) {
   print(stream, args...);
@@ -606,7 +614,7 @@ template <typename... Args>
 
 // stolen from https://github.com/rexim/aids/blob/master/aids.hpp
 template <typename T, typename... Args>
-T unwrap_or_panic(Maybe<T> maybe, Args... args) {
+static auto unwrap_or_panic(Maybe<T> maybe, Args... args) -> T {
   if (!maybe.has_value) {
     panic(args...);
   }
@@ -640,7 +648,8 @@ constexpr auto enumerate(T&& iterable) {
 }
 
 template <typename F, typename T, typename U>
-auto zip_with(F&& fn, const std::vector<T>& a, const std::vector<U>& b)
+static inline auto zip_with(F&& fn, const std::vector<T>& a,
+                            const std::vector<U>& b)
     -> std::vector<decltype(fn(a[0], b[0]))> {
   const std::size_t n = std::min(a.size(), b.size());
   std::vector<decltype(fn(a[0], b[0]))> ret(n);
@@ -651,14 +660,16 @@ auto zip_with(F&& fn, const std::vector<T>& a, const std::vector<U>& b)
 }
 
 template <typename T, typename U>
-auto zip_to_pair(const std::vector<T>& a, const std::vector<U>& b) {
+static inline auto zip_to_pair(const std::vector<T>& a,
+                               const std::vector<U>& b) {
   auto MakePair = [](const T& x, const U& y) { return std::make_pair(x, y); };
 
   return zip_with(MakePair, a, b);
 }
 
 template <typename T, typename R, typename FoldOp>
-R foldl(const R& i, const std::vector<T>& xs, FoldOp fn) {
+static inline auto foldl(const R& i, const std::vector<T>& xs, FoldOp&& fn)
+    -> R {
   auto ret = i;
   for (const auto& x : xs) {
     ret = fn(ret, x);
@@ -667,42 +678,43 @@ R foldl(const R& i, const std::vector<T>& xs, FoldOp fn) {
 }
 
 template <typename T>
-static inline T sum(const std::vector<T>& xs) {
+static inline auto sum(const std::vector<T>& xs) -> T {
   return std::accumulate(std::cbegin(xs), std::cend(xs), T());
   // return foldl(T(), xs, [](const T& a, const T& b) -> T { return a + b; });
 }
 
 template <typename T>
-static inline double mean(const std::vector<T>& xs) {
-  return double(sum(xs) / (xs.size()));
+static inline auto mean(const std::vector<T>& xs) -> f64 {
+  return f64(sum(xs) / (xs.size()));
 }
 
 // using the two pass formula
 template <typename T>
-static inline double var(const std::vector<T>& xs) {
+static inline auto var(const std::vector<T>& xs) -> f64 {
   const std::size_t n = xs.size();
   if (n < std::size_t(2)) {
     fprintf(stderr, "Need atleast 2 elements for variance\n");
     return 0;
   }
-  double sum_squares = 0.0, squared_sum = 0.0;
-  auto xs_mean = mean(xs);
-  auto pred    = [&sum_squares, &squared_sum, &xs_mean](const T& x) {
+  f64 sum_squares = 0.0, squared_sum = 0.0;
+  const auto xs_mean = mean(xs);
+  auto pred          = [&sum_squares, &squared_sum, &xs_mean](const T& x) {
     squared_sum += x - xs_mean;
     sum_squares += (x - xs_mean) * (x - xs_mean);
   };
-  std::for_each(std::cbegin(xs), std::end(xs), pred);
-  const auto N = (double)n;
+  std::for_each(std::cbegin(xs), std::cend(xs), pred);
+  const auto N = (f64)n;
   return (sum_squares - squared_sum * squared_sum / N) / (N - 1);
 }
 
 template <typename T>
-static inline T stdev(const std::vector<T>& xs) {
-  return sqrt(var(xs));
+static inline auto stdev(const std::vector<T>& xs) -> T {
+  return std::sqrt(var(xs));
 }
 
 template <typename... Types>
-static inline std::size_t GetVectorsSize(const std::vector<Types>&... vs) {
+static inline auto GetVectorsSize(const std::vector<Types>&... vs)
+    -> std::size_t {
   constexpr const auto nArgs = sizeof...(Types);
   const std::size_t sizes[]  = {vs.size()...};
   if (nArgs > 1) {
@@ -716,20 +728,21 @@ static inline std::size_t GetVectorsSize(const std::vector<Types>&... vs) {
   return sizes[0];
 }
 
-template <typename F, typename T>
-static inline auto map(F&& fn, const std::vector<T>& input)
-    -> std::vector<decltype(fn(input[0]))> {
+template <typename F, typename T,
+          typename R = decltype(std::declval<F>()(std::declval<T>()))>
+static inline auto map(F&& fn, const std::vector<T>& input) -> std::vector<R> {
   const auto size = input.size();
-  std::vector<decltype(fn(input[0]))> ret(size);
-  std::transform(input.begin(), input.end(), ret.begin(), fn);
+  std::vector<R> ret(size);
+  std::transform((std::begin(input)), (std::end(input)), std::begin(ret), fn);
   return ret;
 }
 
-template <typename F, typename... Types>
+template <typename F, typename... Types,
+          typename R = decltype(std::declval<F>()(std::declval<Types>()...))>
 static inline auto map(F&& fn, const std::vector<Types>&... input)
-    -> std::vector<decltype(fn(input[0]...))> {
+    -> std::vector<R> {
   const auto size = GetVectorsSize(input...);
-  std::vector<decltype(fn(input[0]...))> ret(size);
+  std::vector<R> ret(size);
   for (std::size_t i = 0; i < size; ++i) {
     ret[i] = fn(input[i]...);
   }
@@ -737,7 +750,7 @@ static inline auto map(F&& fn, const std::vector<Types>&... input)
 }
 
 template <typename F, typename T>
-std::vector<T> filter(F&& fn, const std::vector<T>& v) {
+static inline auto filter(F&& fn, const std::vector<T>& v) -> std::vector<T> {
   const auto n = v.size();
   std::vector<T> ret;
   ret.reserve(n);
@@ -750,47 +763,57 @@ std::vector<T> filter(F&& fn, const std::vector<T>& v) {
 }
 
 template <typename T>
-void pop(std::vector<T>& vec, std::size_t elements) {
+static inline void pop(std::vector<T>& vec, std::size_t elements) {
   vec.erase(vec.begin(), vec.begin() + elements);
 }
 
 template <typename T>
-void drop(std::vector<T>& vec, std::size_t elements) {
+static inline void drop(std::vector<T>& vec, std::size_t elements) {
   for (std::size_t i = 0; i < elements; ++i) {
     vec.pop_back();
   }
 }
 
 template <typename T>
-static inline std::vector<T> take(const std::vector<T>& vec,
-                                  std::size_t elements) {
-  return {vec.begin(), vec.begin() + elements};
+static inline auto take(const std::vector<T>& vec, std::size_t elements)
+    -> std::vector<T> {
+  return {std::cbegin(vec), std::cend(vec) + elements};
 }
 
 template <typename T>
-static inline std::vector<T> take(const std::vector<T>& vec,
-                                  const Slice& slice) {
-  return std::vector<T>{vec.begin() + slice.start,
-                        vec.begin() + ((size_t)slice.stop >= vec.size()
-                                           ? vec.size()
-                                           : slice.stop)};
+static inline auto take(const std::vector<T>& vec, const Slice& slice)
+    -> std::vector<T> {
+  return std::vector<T>{
+      std::cbegin(vec) + slice.start,
+      std::cbegin(vec) + std::min(static_cast<size_t>(slice.stop), vec.size())};
 }
 
 template <typename T>
-static inline std::vector<T> take(const std::vector<T>& vec,
-                                  const std::vector<int>& indices) {
+static inline auto take(std::vector<T>&& vec, const pft::Slice& slice)
+    -> std::vector<T> {
+  return std::vector<T>{
+      std::make_move_iterator(std::begin(vec)) + slice.start,
+      std::make_move_iterator(std::begin(vec)) +
+          std::min(static_cast<size_t>(slice.stop), vec.size())};
+}
+
+template <typename T>
+static inline auto take(const std::vector<T>& vec,
+                        const std::vector<int>& indices) -> std::vector<T> {
   const std::size_t n = indices.size();
   std::vector<T> ret;
   ret.reserve(n);
 
   auto l = [&vec](const int& i) { return vec[i]; };
-  std::transform(indices.begin(), indices.end(), std::back_inserter(ret), l);
+  std::transform(std::cbegin(indices), std::cend(indices),
+                 std::back_inserter(ret), l);
   return ret;
 }
 
 template <typename T>
-static inline std::vector<T> takeFromIdx(const std::vector<T>& vec,
-                                         const std::vector<i32>& keep_indices) {
+static inline auto takeFromIdx(const std::vector<T>& vec,
+                               const std::vector<i32>& keep_indices)
+    -> std::vector<T> {
   const std::size_t n = keep_indices.size();
   std::vector<T> ret;
   ret.reserve(n);
@@ -804,7 +827,7 @@ static inline std::vector<T> takeFromIdx(const std::vector<T>& vec,
 }
 
 template <typename T>
-std::vector<T> vec_from_range(i64 low, i64 high) {
+static inline auto vec_from_range(i64 low, i64 high) -> std::vector<T> {
   std::size_t elements = 0;
   if (low < 0) {
     elements = high - low + 1;
@@ -814,14 +837,14 @@ std::vector<T> vec_from_range(i64 low, i64 high) {
   std::vector<T> v(elements);
   i64 i = low;
   for (auto& x : v) {
-    x = (T)i;
+    x = static_cast<T>(i);
     ++i;
   }
   return v;
 }
 
 template <typename T>
-static inline std::vector<T> arange(T start, T stop, T step = 1) {
+static inline auto arange(T start, T stop, T step = 1) -> std::vector<T> {
   // TODO: this is bad if T=unsigned type
   const auto n = std::abs(stop - start);
   std::vector<T> values;
@@ -841,8 +864,8 @@ static inline std::vector<T> arange(T start, T stop, T step = 1) {
 }
 
 template <typename T>
-static inline std::vector<T> linspace(T start, T stop, std::size_t num = 50,
-                                      bool endpoint = true) {
+static inline auto linspace(T start, T stop, std::size_t num = 50,
+                            bool endpoint = true) -> std::vector<T> {
 
   if (num == 0) {
     return std::vector<T>(1, 0);
@@ -889,7 +912,8 @@ static inline std::vector<T> linspace(T start, T stop, std::size_t num = 50,
 
 template <typename ContainerIn,
           typename ContainerOut = std::vector<ContainerIn>>
-static inline ContainerOut chunks(std::size_t n, const ContainerIn& xs) {
+static inline auto chunks(std::size_t n, const ContainerIn& xs)
+    -> ContainerOut {
   const auto input_size = xs.size();
   auto ids              = pft::arange<i64>(0, (i64)input_size, n);
   auto N                = input_size / n;
@@ -925,37 +949,49 @@ static inline auto abs(std::vector<T>& vec) {
 }
 
 template <typename T>
-std::vector<T> pad_right(const std::vector<T>& in, std::size_t padwidth = 1,
-                         T pad_value = 0) {
-  auto out_size = padwidth + in.size();
+static inline auto pad_right(const std::vector<T>& in, std::size_t padwidth = 1,
+                             T pad_value = 0) -> std::vector<T> {
+  const auto out_size = padwidth + in.size();
   std::vector<T> out(out_size, pad_value);
-  std::transform(in.begin(), in.end(), out.begin(),
+  std::transform(std::cbegin(in), std::cend(in), std::begin(out),
                  [](const auto& x) { return x; });
   return out;
 }
 
 template <typename T>
-std::vector<T> pad_left(const std::vector<T>& in, std::size_t padwidth = 1,
-                        T pad_value = 0) {
+static inline auto pad_right(const std::vector<T>& in, const Slice& slice)
+    -> std::vector<T> {
+  const auto out_size = in.size() + slice.size();
+  std::vector<T> out;
+  out.reserve(out_size);
+  std::copy(std::cbegin(in), std::cend(in), std::back_inserter(out));
+  std::copy(std::cbegin(in) + slice.start, std::begin(in) + slice.stop,
+            std::back_inserter(out));
+  return out;
+}
+
+template <typename T>
+static inline auto pad_left(const std::vector<T>& in, std::size_t padwidth = 1,
+                            T pad_value = 0) -> std::vector<T> {
   auto out = pad_right(in, padwidth, pad_value);
-  std::rotate(out.begin(), out.end() - padwidth, out.end());
+  std::rotate(std::begin(out), std::end(out) - padwidth, std::end(out));
   return out;
 }
 
 template <typename T>
-std::vector<T> pad(const std::vector<T>& in, std::size_t padwidth = 1,
-                   T pad_value = 0) {
-  auto out_size = 2 * padwidth + in.size();
+static inline auto pad(const std::vector<T>& in, std::size_t padwidth = 1,
+                       T pad_value = 0) -> std::vector<T> {
+  const auto out_size = 2 * padwidth + in.size();
   std::vector<T> out(out_size, pad_value);
-  std::transform(in.begin(), in.end(), out.begin() + padwidth,
+  std::transform(std::cbegin(in), std::cend(in), std::begin(out) + padwidth,
                  [](const auto& x) { return x; });
 
   return out;
 }
 
 template <typename T>
-std::vector<T> where(const std::vector<i32>& c, const std::vector<T>& v1,
-                     const std::vector<T>& v2) {
+static inline auto where(const std::vector<i32>& c, const std::vector<T>& v1,
+                         const std::vector<T>& v2) -> std::vector<T> {
   const std::size_t n = c.size();
   std::vector<T> ret(n);
   for (std::size_t i = 0; i < n; ++i) {
@@ -966,8 +1002,8 @@ std::vector<T> where(const std::vector<i32>& c, const std::vector<T>& v1,
 }
 
 template <typename T>
-std::vector<T> where(const std::vector<i32>& c, const std::vector<T>& v1,
-                     T v2) {
+static inline auto where(const std::vector<i32>& c, const std::vector<T>& v1,
+                         T v2) -> std::vector<T> {
   const std::size_t n = c.size();
   std::vector<T> ret(n);
   for (std::size_t i = 0; i < n; ++i) {
@@ -978,8 +1014,8 @@ std::vector<T> where(const std::vector<i32>& c, const std::vector<T>& v1,
 }
 
 template <typename T>
-std::vector<T> where(const std::vector<i32>& c, T v1,
-                     const std::vector<T>& v2) {
+static inline auto where(const std::vector<i32>& c, T v1,
+                         const std::vector<T>& v2) -> std::vector<T> {
   const std::size_t n = c.size();
   std::vector<T> ret(n);
   for (std::size_t i = 0; i < n; ++i) {
@@ -990,7 +1026,8 @@ std::vector<T> where(const std::vector<i32>& c, T v1,
 }
 
 template <typename T>
-std::vector<T> where(const std::vector<i32>& c, T v1, T v2) {
+static inline auto where(const std::vector<i32>& c, T v1, T v2)
+    -> std::vector<T> {
   const std::size_t n = c.size();
   std::vector<T> ret(n);
   for (std::size_t i = 0; i < n; ++i) {
@@ -1001,12 +1038,12 @@ std::vector<T> where(const std::vector<i32>& c, T v1, T v2) {
 }
 
 template <typename T>
-std::vector<int> argsort(const std::vector<T>& xs) {
+static inline auto argsort(const std::vector<T>& xs) -> std::vector<i32> {
   auto idx     = arange<int>(0, xs.size());
   const auto f = [&xs](std::size_t i1, std::size_t i2) {
     return xs[i1] < xs[i2];
   };
-  std::sort(idx.begin(), idx.end(), f);
+  std::sort(std::begin(idx), std::end(idx), f);
 
   return idx;
 }
@@ -1093,16 +1130,16 @@ struct AParse {
 
 // sane mod function
 template <typename T>
-T mod(T a, T b) {
+static inline auto mod(T a, T b) -> T {
   return (a % b + b) % b;
 }
 
 // return the index
 template <typename T, typename Op>
-Maybe<i64> findfirst(Op&& fn, const std::vector<T>& h) {
-  auto res = std::find(h.begin(), h.end(), fn);
+static inline auto findfirst(Op&& fn, const std::vector<T>& h) -> Maybe<i64> {
+  auto res = std::find(std::cbegin(h), std::cend(h), fn);
   if (res != h.end()) {
-    return {1, std::distance(h.begin(), res)};
+    return {1, std::distance(std::cbegin(h), res)};
   } else {
     return {0, -1};
   }
@@ -1110,7 +1147,8 @@ Maybe<i64> findfirst(Op&& fn, const std::vector<T>& h) {
 
 // return the indices
 template <typename T, typename Op>
-std::vector<i64> findall(Op&& fn, const std::vector<T>& h) {
+static inline auto findall(Op&& fn, const std::vector<T>& h)
+    -> std::vector<i64> {
   const auto n = h.size();
   std::vector<i64> ret;
   ret.reserve(n);
