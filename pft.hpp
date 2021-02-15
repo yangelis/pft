@@ -368,7 +368,7 @@ static inline auto read_file_as_string_view(const char* filename)
   }
 
   std::size_t read_size = fread(data, 1, size, f);
-  if (read_size != (std::size_t)size && ferror(f) != 0) {
+  if (read_size != static_cast<std::size_t>(size) && ferror(f) != 0) {
     return {};
   }
 
@@ -449,7 +449,7 @@ struct Matrix {
     return *this;
   }
 
-  constexpr void diagonal(T d = (T)1.0) {
+  constexpr void diagonal(T d = static_cast<T>(1.0)) {
     for (std::size_t i = 0; i < rows; ++i) {
       for (std::size_t j = 0; j < cols; ++j) {
         if (i == j) {
@@ -704,7 +704,7 @@ static inline auto var(const std::vector<T>& xs) -> f64 {
     sum_squares += (x - xs_mean) * (x - xs_mean);
   };
   std::for_each(std::cbegin(xs), std::cend(xs), pred);
-  const auto N = (f64)n;
+  const auto N = static_cast<f64>(n);
   return (sum_squares - squared_sum * squared_sum / N) / (N - 1);
 }
 
@@ -800,12 +800,12 @@ static inline auto take(std::vector<T>&& vec, const pft::Slice& slice)
 
 template <typename T>
 static inline auto take(const std::vector<T>& vec,
-                        const std::vector<int>& indices) -> std::vector<T> {
+                        const std::vector<i32>& indices) -> std::vector<T> {
   const std::size_t n = indices.size();
   std::vector<T> ret;
   ret.reserve(n);
 
-  auto l = [&vec](const int& i) { return vec[i]; };
+  auto l = [&vec](const i32& i) { return vec[i]; };
   std::transform(std::cbegin(indices), std::cend(indices),
                  std::back_inserter(ret), l);
   return ret;
@@ -847,7 +847,7 @@ static inline auto vec_from_range(i64 low, i64 high) -> std::vector<T> {
 template <typename T>
 static inline auto arange(T start, T stop, T step = 1) -> std::vector<T> {
   // TODO: this is bad if T=unsigned type
-  const auto n = std::abs(stop - start);
+  const std::size_t n = std::abs(stop - start);
   std::vector<T> values;
   values.reserve(n);
 
@@ -916,14 +916,15 @@ template <typename ContainerIn,
 static inline auto chunks(std::size_t n, const ContainerIn& xs)
     -> ContainerOut {
   const auto input_size = xs.size();
-  auto ids              = pft::arange<i64>(0, (i64)input_size, n);
-  auto N                = input_size / n;
+  auto ids =
+      pft::arange<i64>(0, static_cast<i64>(input_size), static_cast<i64>(n));
+  auto N = input_size / n;
 
   N += input_size % n != 0;
-  ids.push_back(input_size);
+  ids.push_back(static_cast<i64>(input_size));
 
   ContainerOut ret(N);
-  std::transform(ret.begin(), ret.end(), ret.begin(),
+  std::transform(std::begin(ret), std::end(ret), std::begin(ret),
                  [i = 0, &xs, &ids](auto) mutable {
                    return take(xs, pft::Slice{ids[i], ids[i++ + 1]});
                  });
@@ -1066,7 +1067,7 @@ static inline auto where(const std::vector<i32>& c, T v1, T v2)
 
 template <typename T>
 static inline auto argsort(const std::vector<T>& xs) -> std::vector<i32> {
-  auto idx     = arange<int>(0, xs.size());
+  auto idx     = arange<i32>(0, static_cast<i32>(xs.size()));
   const auto f = [&xs](std::size_t i1, std::size_t i2) {
     return xs[i1] < xs[i2];
   };
