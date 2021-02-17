@@ -142,6 +142,9 @@ int main() {
   // pad_right, pad_left, pad
   ////////////////////////////////////////////////
   const auto paded_xx_right = pft::pad_right(xx, 10, 69);
+  for (size_t i = 0; i < xx.size(); ++i) {
+    assert(paded_xx_right[i] == xx[i]);
+  }
   for (size_t i = xx.size(); i < 10 + xx.size(); ++i) {
     assert(paded_xx_right[i] == 69);
   }
@@ -149,6 +152,9 @@ int main() {
   const auto paded_xx_left = pft::pad_left(xx, 10, 69);
   for (size_t i = 0; i < 10; ++i) {
     assert(paded_xx_left[i] == 69);
+  }
+  for (size_t i = 0; i < xx.size(); ++i) {
+    assert(xx[0] == paded_xx_left[0 + 10]);
   }
 
   const auto paded_xx = pft::pad(xx, 10, 69);

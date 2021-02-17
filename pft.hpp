@@ -955,8 +955,7 @@ static inline auto pad_right(const std::vector<T>& in, std::size_t padwidth = 1,
                              T pad_value = 0) -> std::vector<T> {
   const auto out_size = padwidth + in.size();
   std::vector<T> out(out_size, pad_value);
-  std::transform(std::cbegin(in), std::cend(in), std::begin(out),
-                 [](const auto& x) { return x; });
+  std::copy(std::cbegin(in), std::cend(in), std::begin(out));
   return out;
 }
 
@@ -985,9 +984,7 @@ static inline auto pad(const std::vector<T>& in, std::size_t padwidth = 1,
                        T pad_value = 0) -> std::vector<T> {
   const auto out_size = 2 * padwidth + in.size();
   std::vector<T> out(out_size, pad_value);
-  std::transform(std::cbegin(in), std::cend(in), std::begin(out) + padwidth,
-                 [](const auto& x) { return x; });
-
+  std::copy(std::cbegin(in), std::cend(in), std::begin(out) + padwidth);
   return out;
 }
 
