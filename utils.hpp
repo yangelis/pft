@@ -1,3 +1,31 @@
+// Copyright 2021 Ioannis Angelis <john_agelis@hotmail.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining
+// a copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to
+// permit persons to whom the Software is furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be
+// included in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// ============================================================
+//
+// ChangeLog:
+//   0.0.1    abs_complex, peak_prominences, Peak, peak_widths, local_maxima,
+//            select_by_property, unpack_condition_args,
+//            select_peaks_by_distance, find_peaks, prod, factorial, vandermonde,
+//            SG, vmadd, compute_householder_factor, vnorm, vdiv, QRDecomposition,
+//            LUdecomposition, savgol_coeffs, FFTW_R2C_1D, FFTW_C2R_1D, convln
 #ifndef UTILS_H_
 #define UTILS_H_
 #include "pft.hpp"
@@ -13,8 +41,8 @@ static inline auto abs_complex(const std::vector<std::complex<T>>& vec) {
   return pft::map(abs_lambda, vec);
 }
 
-auto peak_prominences(const std::vector<f64>& xs, const std::vector<i32>& peaks,
-                      i32 wlen)
+static inline auto peak_prominences(const std::vector<f64>& xs,
+                                    const std::vector<i32>& peaks, i32 wlen)
     -> std::tuple<std::vector<f64>, std::vector<i32>, std::vector<i32>> {
   const std::size_t peaks_size = peaks.size();
 
@@ -71,9 +99,9 @@ struct Peak {
 };
 
 /// Find the width of each peak at a relative height
-auto peak_widths(const std::vector<f64>& signal,
-                 const std::vector<i32>& peaks_indices, f64 rel_height)
-    -> std::vector<Peak> {
+static inline auto peak_widths(const std::vector<f64>& signal,
+                               const std::vector<i32>& peaks_indices,
+                               f64 rel_height) -> std::vector<Peak> {
   const std::size_t n_of_peaks = peaks_indices.size();
   const i32 wlen               = -1;
   assert(rel_height > 0);
@@ -135,7 +163,7 @@ auto peak_widths(const std::vector<f64>& signal,
 }
 
 template <typename T>
-auto local_maxima(std::vector<T> x)
+static inline auto local_maxima(std::vector<T> x)
     -> std::tuple<std::vector<i32>, std::vector<i32>, std::vector<i32>> {
   const std::size_t n = x.size();
   std::vector<i32> midpoints(n / 2, 0);
@@ -172,7 +200,8 @@ auto local_maxima(std::vector<T> x)
 }
 
 template <typename T>
-auto select_by_property(std::vector<T> p, T pmin, T pmax) -> std::vector<i32> {
+static inline auto select_by_property(std::vector<T> p, T pmin, T pmax)
+    -> std::vector<i32> {
   std::vector<i32> keep(p.size(), 1);
 
   // if (pmin.has_value) {
@@ -190,9 +219,9 @@ auto select_by_property(std::vector<T> p, T pmin, T pmax) -> std::vector<i32> {
 }
 
 template <typename T>
-auto unpack_condition_args(const std::pair<T, T>& interval,
-                           const std::vector<f64>& xs,
-                           const std::vector<i32>& peaks)
+static inline auto unpack_condition_args(const std::pair<T, T>& interval,
+                                         const std::vector<f64>& xs,
+                                         const std::vector<i32>& peaks)
     -> std::pair<f64, f64> {
 
   (void)xs;
@@ -203,9 +232,9 @@ auto unpack_condition_args(const std::pair<T, T>& interval,
   return std::make_pair(imin, imax);
 }
 
-auto select_peaks_by_distance(const std::vector<i32>& peaks,
-                              const std::vector<f64>& priority, f64 distance)
-    -> std::vector<i32> {
+static inline auto select_peaks_by_distance(const std::vector<i32>& peaks,
+                                            const std::vector<f64>& priority,
+                                            f64 distance) -> std::vector<i32> {
 
   i32 peaks_size = peaks.size();
 
@@ -236,8 +265,9 @@ auto select_peaks_by_distance(const std::vector<i32>& peaks,
 }
 
 /// Return the indices of the peaks
-auto find_peaks(const std::vector<f64>& xs, Maybe<std::pair<f64, f64>> height,
-                f64 distance = 0.0) -> std::vector<i32> {
+static inline auto find_peaks(const std::vector<f64>& xs,
+                              Maybe<std::pair<f64, f64>> height,
+                              f64 distance = 0.0) -> std::vector<i32> {
   auto [peaks_indices, l_edges, r_edges] = local_maxima(xs);
 
   if (height.has_value) {
@@ -259,13 +289,13 @@ auto find_peaks(const std::vector<f64>& xs, Maybe<std::pair<f64, f64>> height,
 }
 
 template <typename T>
-auto prod(const std::vector<T>& x) -> T {
+static inline auto prod(const std::vector<T>& x) -> T {
   auto ret =
       pft::foldl(T(1), x, [](const T& a, const T& b) -> T { return a * b; });
   return ret;
 }
 
-auto factorial(const i64& n) -> f64 {
+static inline auto factorial(const i64& n) -> f64 {
   static f64 table[171];
   static bool init = true;
   if (init) {
@@ -279,7 +309,7 @@ auto factorial(const i64& n) -> f64 {
 }
 
 template <typename T>
-auto vandermonde(i64 halfWindow, i64 polyDeg) -> pft::Matrix<T> {
+static inline auto vandermonde(i64 halfWindow, i64 polyDeg) -> pft::Matrix<T> {
   assert(halfWindow >= 0);
   assert(polyDeg >= 0);
   // arange return an exclusive range
@@ -304,7 +334,7 @@ auto vandermonde(i64 halfWindow, i64 polyDeg) -> pft::Matrix<T> {
 }
 
 template <typename T>
-auto SG(i64 halfWindow, i64 polyDeg) -> pft::Matrix<T> {
+static inline auto SG(i64 halfWindow, i64 polyDeg) -> pft::Matrix<T> {
   assert(2 * halfWindow > polyDeg);
 
   auto V = vandermonde<T>(halfWindow, polyDeg);
@@ -327,7 +357,7 @@ auto SG(i64 halfWindow, i64 polyDeg) -> pft::Matrix<T> {
 
 /// Calculate Vi = Ai + c*Bi
 template <typename T>
-auto vmadd(const std::vector<T>& a, const std::vector<T>& b, T s)
+static inline auto vmadd(const std::vector<T>& a, const std::vector<T>& b, T s)
     -> std::vector<T> {
   const auto n = a.size();
   std::vector<T> ret(n);
@@ -339,7 +369,8 @@ auto vmadd(const std::vector<T>& a, const std::vector<T>& b, T s)
 }
 
 template <typename T>
-auto compute_householder_factor(const std::vector<T>& v) -> pft::Matrix<T> {
+static inline auto compute_householder_factor(const std::vector<T>& v)
+    -> pft::Matrix<T> {
   const auto n = v.size();
   pft::Matrix<T> ret(n, n);
 
@@ -356,7 +387,7 @@ auto compute_householder_factor(const std::vector<T>& v) -> pft::Matrix<T> {
 
 /// Return the norm of a vector
 template <typename T>
-auto vnorm(const std::vector<T>& xs) -> f64 {
+static inline auto vnorm(const std::vector<T>& xs) -> f64 {
   return std::sqrt(std::transform_reduce(std::cbegin(xs), std::cend(xs), T(),
                                          std::plus{},
                                          [](const auto& x) { return x * x; }));
@@ -364,13 +395,13 @@ auto vnorm(const std::vector<T>& xs) -> f64 {
 
 /// Divide a vector with a value
 template <typename T>
-auto vdiv(const std::vector<T>& x, T d) -> std::vector<T> {
+static inline auto vdiv(const std::vector<T>& x, T d) -> std::vector<T> {
   auto ret = pft::map([&d](const T& a) -> T { return a / d; }, x);
   return ret;
 }
 
 template <typename T>
-auto QRDecomposition(const pft::Matrix<T>& mat)
+static inline auto QRDecomposition(const pft::Matrix<T>& mat)
     -> std::pair<pft::Matrix<T>, pft::Matrix<T>> {
   pft::Matrix<T> Q;
   pft::Matrix<T> R;
@@ -421,131 +452,124 @@ auto QRDecomposition(const pft::Matrix<T>& mat)
 
 struct LUdecomposition {
   using Mat_t = pft::Matrix<f64>;
-  std::size_t n;
+  size_t n;
   Mat_t lu;
   std::vector<i32> indices;
   f64 d;
-  LUdecomposition(const Mat_t& a);
-  ~LUdecomposition() = default;
-  auto solve(const std::vector<f64>& b) -> std::vector<f64>;
-  void solve(Mat_t& b, Mat_t& x);
-  void inverse(Mat_t& ainv);
-  // f64 det();
-};
 
-LUdecomposition::LUdecomposition(const Mat_t& a)
-    : n(a.rows), lu(a), indices(n) {
-
-  constexpr f64 tiny = 1.0e-40;
-  std::size_t i, imax, j, k;
-  f64 big, temp;
-  std::vector<f64> vv(n, 0.0);
-  d = 1.0;
-  for (i = 0; i < n; ++i) {
-    big = 0.0;
-    for (j = 0; j < n; ++j) {
-      temp = std::abs(lu(i, j));
-      if (temp > big) {
-        big = temp;
-      }
-    }
-    vv[i] = 1.0 / big;
-  }
-
-  for (k = 0; k < n; ++k) {
-    big = 0.0;
-    for (i = k; i < n; ++i) {
-      temp = vv[i] * std::abs(lu(i, k));
-      if (temp > big) {
-        big  = temp;
-        imax = i;
-      }
-    }
-    if (k != imax) {
+  LUdecomposition(const Mat_t& a) : n(a.rows), lu(a), indices(n) {
+    constexpr f64 tiny = 1.0e-40;
+    size_t i, imax, j, k;
+    f64 big, temp;
+    std::vector<f64> vv(n, 0.0);
+    d = 1.0;
+    for (i = 0; i < n; ++i) {
+      big = 0.0;
       for (j = 0; j < n; ++j) {
-        temp        = lu(imax, j);
-        lu(imax, j) = lu(k, j);
-        lu(k, j)    = temp;
+        temp = std::abs(lu(i, j));
+        if (temp > big) {
+          big = temp;
+        }
       }
-      d        = -d;
-      vv[imax] = vv[k];
+      vv[i] = 1.0 / big;
     }
-    indices[k] = imax;
-    if (lu(k, k) == 0.0) {
-      lu(k, k) = tiny;
-    }
-    for (i = k + 1; i < n; ++i) {
-      lu(i, k) /= lu(k, k);
-      temp = lu(i, k);
-      for (j = k + 1; j < n; ++j) {
-        lu(i, j) -= temp * lu(k, j);
+
+    for (k = 0; k < n; ++k) {
+      big = 0.0;
+      for (i = k; i < n; ++i) {
+        temp = vv[i] * std::abs(lu(i, k));
+        if (temp > big) {
+          big  = temp;
+          imax = i;
+        }
+      }
+      if (k != imax) {
+        for (j = 0; j < n; ++j) {
+          temp        = lu(imax, j);
+          lu(imax, j) = lu(k, j);
+          lu(k, j)    = temp;
+        }
+        d        = -d;
+        vv[imax] = vv[k];
+      }
+      indices[k] = imax;
+      if (lu(k, k) == 0.0) {
+        lu(k, k) = tiny;
+      }
+      for (i = k + 1; i < n; ++i) {
+        lu(i, k) /= lu(k, k);
+        temp = lu(i, k);
+        for (j = k + 1; j < n; ++j) {
+          lu(i, j) -= temp * lu(k, j);
+        }
       }
     }
   }
-}
+  ~LUdecomposition() = default;
 
-auto LUdecomposition::solve(const std::vector<f64>& b) -> std::vector<f64> {
-  std::vector<f64> x(b);
+  auto solve(const std::vector<f64>& b) -> std::vector<f64> {
+    std::vector<f64> x(b);
 
-  std::size_t ii = 0, ip, j;
-  f64 sum;
-  if (b.size() != n || x.size() != n) {
-    fprintf(stderr, "Bad sizes\n");
-    exit(1);
-  }
+    size_t ii = 0, ip, j;
+    f64 sum;
+    if (b.size() != n || x.size() != n) {
+      fprintf(stderr, "Bad sizes\n");
+      exit(1);
+    }
 
-  for (std::size_t i = 0; i < n; ++i) {
-    ip    = indices[i];
-    sum   = x[ip];
-    x[ip] = x[i];
-    if (ii != 0) {
-      for (j = ii - 1; j < i; ++j) {
+    for (size_t i = 0; i < n; ++i) {
+      ip    = indices[i];
+      sum   = x[ip];
+      x[ip] = x[i];
+      if (ii != 0) {
+        for (j = ii - 1; j < i; ++j) {
+          sum -= lu(i, j) * x[j];
+        }
+      } else if (sum != 0.0) {
+        ii = i + 1;
+      }
+      x[i] = sum;
+    }
+
+    for (i32 i = n - 1; i >= 0; --i) {
+      sum = x[i];
+      for (j = i + 1; j < n; ++j) {
         sum -= lu(i, j) * x[j];
       }
-    } else if (sum != 0.0) {
-      ii = i + 1;
+      x[i] = sum / lu(i, i);
     }
-    x[i] = sum;
+
+    return x;
   }
-
-  for (i32 i = n - 1; i >= 0; --i) {
-    sum = x[i];
-    for (j = i + 1; j < n; ++j) {
-      sum -= lu(i, j) * x[j];
-    }
-    x[i] = sum / lu(i, i);
-  }
-
-  return x;
-}
-
-void LUdecomposition::solve(Mat_t& b, Mat_t& x) {
-  std::size_t i, m = b.cols;
-  std::vector<f64> xx(n);
-  for (std::size_t j = 0; j < m; ++j) {
-    for (i = 0; i < n; ++i) {
-      xx[i] = b(i, j);
-    }
-    xx = solve(xx);
-    for (i = 0; i < n; ++i) {
-      x(i, j) = xx[i];
+  void solve(Mat_t& b, Mat_t& x) {
+    size_t i, m = b.cols;
+    std::vector<f64> xx(n);
+    for (size_t j = 0; j < m; ++j) {
+      for (i = 0; i < n; ++i) {
+        xx[i] = b(i, j);
+      }
+      xx = solve(xx);
+      for (i = 0; i < n; ++i) {
+        x(i, j) = xx[i];
+      }
     }
   }
-}
-
-void LUdecomposition::inverse(Mat_t& ainv) {
-  ainv = Mat_t(n, n);
-  ainv.diagonal();
-  solve(ainv, ainv);
-}
+  void inverse(Mat_t& ainv) {
+    ainv = Mat_t(n, n);
+    ainv.diagonal();
+    solve(ainv, ainv);
+  }
+  // f64 det();
+};
 
 /// Savitzky-Golay Coeffs for 1-D filter
 /// np: n points, must be an odd number
 /// nl, nr: n points to left and right
 /// ld: order of the derivative, default = 0 (no derivation)
 /// m: order of the polynomial
-auto savgol_coeffs(const i32 np, const i32 nl, const i32 nr, const i32 ld,
-                   const i32 m) -> std::vector<f64> {
+static inline auto savgol_coeffs(const i32 np, const i32 nl, const i32 nr,
+                                 const i32 ld, const i32 m)
+    -> std::vector<f64> {
 
   if (np < nl + nr + 1 || nr < 0 || nr < 0 || ld > m || nl + nr < m) {
     fprintf(stderr, "Bad arguments\n");
@@ -703,8 +727,8 @@ private:
   fftw_plan p;
 };
 
-auto convln(const std::vector<f64>& input, const std::vector<f64>& kernel)
-    -> std::vector<f64> {
+static inline auto convln(const std::vector<f64>& input,
+                          const std::vector<f64>& kernel) -> std::vector<f64> {
   fftw_plan p;
   const auto n = input.size();
   const auto m = kernel.size();
