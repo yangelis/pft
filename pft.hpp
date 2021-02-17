@@ -966,7 +966,7 @@ static inline auto pad_right(const std::vector<T>& in, const Slice& slice)
   std::vector<T> out;
   out.reserve(out_size);
   std::copy(std::cbegin(in), std::cend(in), std::back_inserter(out));
-  std::copy(std::cbegin(in) + slice.start, std::begin(in) + slice.stop,
+  std::copy(std::cbegin(in) + slice.start, std::cbegin(in) + slice.stop,
             std::back_inserter(out));
   return out;
 }
