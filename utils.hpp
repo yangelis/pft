@@ -25,11 +25,17 @@
 //            select_by_property, unpack_condition_args,
 //            select_peaks_by_distance, find_peaks, prod, factorial, vandermonde,
 //            SG, vmadd, compute_householder_factor, vnorm, vdiv, QRDecomposition,
-//            LUdecomposition, savgol_coeffs, FFTW_R2C_1D, FFTW_C2R_1D, convln
+//            LUdecomposition, savgol_coeffs, FFTW_R2C_1D, FFTW_C2R_1D,
+//            convln_use_r2c, convln_use_c2c
+// =============================================================================
 #ifndef UTILS_H_
 #define UTILS_H_
 #include "pft.hpp"
 #include <complex>
+
+#ifdef UTILS_USE_FFTW
+#include <fftw3.h>
+#endif
 
 using pft::Maybe;
 
@@ -619,21 +625,16 @@ static inline auto savgol_coeffs(const i32 np, const i32 nl, const i32 nr,
 }
 
 #ifdef UTILS_USE_FFTW
-#include <complex>
-#include <fftw3.h>
-
 struct FFTW_R2C_1D {
   std::size_t input_size{0};
-  f64* const input_buffer;
   std::size_t output_size{0};
+  f64* input_buffer;
   fftw_complex* output_buffer = nullptr;
 
-  FFTW_R2C_1D(std::size_t fft_size)
-      : input_size(fft_size), input_buffer(fftw_alloc_real(fft_size)),
-        output_size(input_size / 2 + 1),
-        output_buffer(fftw_alloc_complex(output_size)) {
-    p = fftw_plan_dft_r2c_1d(input_size, input_buffer, output_buffer,
-                             FFTW_ESTIMATE);
+  FFTW_R2C_1D(std::size_t n) : input_size(n), output_size(n / 2 + 1) {
+    input_buffer  = fftw_alloc_real(input_size);
+    output_buffer = fftw_alloc_complex(output_size);
+    p = fftw_plan_dft_r2c_1d(n, input_buffer, output_buffer, FFTW_ESTIMATE);
   }
 
   ~FFTW_R2C_1D() {
@@ -643,6 +644,7 @@ struct FFTW_R2C_1D {
   }
 
   void set_input(const std::vector<f64>& vec) {
+    assert(vec.size() == input_size);
     memcpy(input_buffer, vec.data(), sizeof(f64) * vec.size());
   }
 
@@ -682,15 +684,20 @@ private:
 
 struct FFTW_C2R_1D {
   std::size_t input_size{0};
-  fftw_complex* const input_buffer;
   std::size_t output_size{0};
+  fftw_complex* input_buffer;
   f64* output_buffer;
+  i32 total_size;
 
-  FFTW_C2R_1D(std::size_t fft_size)
-      : input_size(fft_size), input_buffer(fftw_alloc_complex(fft_size)),
-        output_size(input_size), output_buffer(fftw_alloc_real(output_size)) {
-    p = fftw_plan_dft_c2r_1d(input_size, input_buffer, output_buffer,
-                             FFTW_ESTIMATE);
+  FFTW_C2R_1D(std::size_t n)
+  // : input_size(fft_size / 2 + 1), output_size(fft_size)
+  {
+    input_size    = n;
+    output_size   = n;
+    total_size    = n;
+    input_buffer  = fftw_alloc_complex((n / 2 + 1));
+    output_buffer = fftw_alloc_real(n);
+    p = fftw_plan_dft_c2r_1d(n, input_buffer, output_buffer, FFTW_ESTIMATE);
   }
 
   ~FFTW_C2R_1D() {
@@ -699,15 +706,23 @@ struct FFTW_C2R_1D {
     fftw_free(output_buffer);
   }
 
+  void set_input(const fftw_complex* buffer, std::size_t size) {
+    memcpy(input_buffer, buffer, sizeof(fftw_complex) * input_size);
+  }
+
+  void set_points(const fftw_complex* buffer) {
+    const i32 sizein = i32(f64(total_size) * (input_size / 2 + 1) / input_size);
+    for (i32 i = 0; i < sizein; ++i) {
+      input_buffer[i][0] = buffer[i][0];
+      input_buffer[i][1] = buffer[i][1];
+    }
+  }
+
   void set_input_zeropadded(const fftw_complex* buffer, std::size_t size) {
     assert(size <= input_size);
     memcpy(input_buffer, buffer, sizeof(fftw_complex) * size);
     memset(&input_buffer[size], 0, sizeof(fftw_complex) * (input_size - size));
   }
-
-  // void set_input_zeropadded(const std::vector<std::complec<f64>>& vec) {
-  //   set_input_zeropadded(&vec[0], vec.size());
-  // }
 
   void execute() { fftw_execute(p); }
 
@@ -717,9 +732,9 @@ struct FFTW_C2R_1D {
   }
 
   auto get_normalised_output_as_vec() const -> std::vector<f64> {
-    const auto ret =
-        pft::map([&](const auto& x) { return x / output_size; },
-                 std::vector<f64>(output_buffer, output_buffer + output_size));
+    const auto ret = pft::map(
+        [&](const auto& x) { return x / static_cast<f64>(output_size); },
+        std::vector<f64>(output_buffer, output_buffer + output_size));
     return ret;
   }
 
@@ -727,62 +742,120 @@ private:
   fftw_plan p;
 };
 
-static inline auto convln(const std::vector<f64>& input,
-                          const std::vector<f64>& kernel) -> std::vector<f64> {
-  fftw_plan p;
-  const auto n = input.size();
-  const auto m = kernel.size();
+static inline auto convln_use_r2c(const std::vector<f64>& input,
+                                  const std::vector<f64>& kernel)
+    -> std::vector<f64> {
+  const auto n                = input.size();
+  const auto m                = kernel.size();
+  const std::size_t fft_shape = input.size() + kernel.size() - 1;
 
-  const std::size_t padded_length = input.size() + kernel.size() - 1;
+  const auto padded_input  = pft::pad_right(input, fft_shape - n);
+  const auto padded_kernel = pft::pad_right(kernel, fft_shape - m);
 
-  // // zero pad input
-  auto padded_input = pft::pad_right(input, padded_length - n);
+  FFTW_R2C_1D input_fft(fft_shape);
+  input_fft.set_input(padded_input);
+  input_fft.execute();
 
-  // fft of input
-  fftw_complex* input_fft = nullptr;
-  input_fft               = fftw_alloc_complex(padded_length);
-  p = fftw_plan_dft_r2c_1d(padded_length, padded_input.data(), input_fft,
-                           FFTW_ESTIMATE);
-  fftw_execute(p);
+  FFTW_R2C_1D kernel_fft(fft_shape);
+  kernel_fft.set_input(padded_kernel);
+  kernel_fft.execute();
 
-  // zero pad kernel
-  auto padded_kernel = pft::pad_right(kernel, padded_length - m);
-
-  // fft of kernel
-  fftw_complex* kernel_fft = nullptr;
-  kernel_fft               = fftw_alloc_complex(padded_length);
-  p = fftw_plan_dft_r2c_1d(padded_length, padded_kernel.data(), kernel_fft,
-                           FFTW_ESTIMATE);
-  fftw_execute(p);
+  const auto input_fft_output  = input_fft.get_output_as_array();
+  const auto kernel_fft_output = kernel_fft.get_output_as_array();
 
   // mutliply the ffts
-  fftw_complex* fixed_product = nullptr;
-  fixed_product               = fftw_alloc_complex(padded_length);
+  fftw_complex* fixed_product = fftw_alloc_complex(fft_shape);
 
-  for (std::size_t i = 0; i < padded_length / 2; ++i) {
-    fixed_product[i][0] =
-        input_fft[i][0] * kernel_fft[i][0] - input_fft[i][1] * kernel_fft[i][1];
-    fixed_product[i][1] =
-        input_fft[i][0] * kernel_fft[i][1] + input_fft[i][1] * kernel_fft[i][0];
+  for (std::size_t i = 0; i <= fft_shape / 2; ++i) {
+    fixed_product[i][0] = input_fft_output[i][0] * kernel_fft_output[i][0] -
+                          input_fft_output[i][1] * kernel_fft_output[i][1];
+    fixed_product[i][1] = input_fft_output[i][0] * kernel_fft_output[i][1] +
+                          input_fft_output[i][1] * kernel_fft_output[i][0];
   }
 
-  // iff of the prodyct
-  f64* output = nullptr;
-  output      = fftw_alloc_real(padded_length);
-  p = fftw_plan_dft_c2r_1d(padded_length, fixed_product, output, FFTW_ESTIMATE);
-  fftw_execute(p);
-
-  // normalize output due to fftw scaling
-  for (std::size_t i = 0; i < n; ++i) {
-    output[i] /= padded_length;
+  for (std::size_t i = fft_shape / 2 + 1; i < fft_shape; ++i) {
+    fixed_product[i][0] = input_fft_output[fft_shape - i][0] *
+                              kernel_fft_output[fft_shape - i][0] -
+                          input_fft_output[fft_shape - i][1] *
+                              kernel_fft_output[fft_shape - i][1];
+    fixed_product[i][1] = -(input_fft_output[fft_shape - i][0] *
+                                kernel_fft_output[fft_shape - i][1] +
+                            input_fft_output[fft_shape - i][1] *
+                                kernel_fft_output[fft_shape - i][0]);
   }
 
-  std::vector<f64> ret(output, output + n);
-  fftw_destroy_plan(p);
-  fftw_free(input_fft);
-  fftw_free(kernel_fft);
+  // iff of the product
+  FFTW_C2R_1D product_fft(fft_shape);
+  product_fft.set_points(fixed_product);
+  product_fft.execute();
+
+  const auto output = product_fft.get_normalised_output_as_vec();
+
   fftw_free(fixed_product);
-  fftw_free(output);
+  return output;
+}
+
+static inline auto convln_use_c2c(const std::vector<f64>& input,
+                                  const std::vector<f64>& kernel)
+    -> std::vector<f64> {
+
+  const auto n                       = input.size();
+  const auto m                       = kernel.size();
+  const std::size_t convolution_size = n + m - 1;
+
+  const auto padded_input  = pft::pad_right(input, convolution_size - n);
+  const auto padded_kernel = pft::pad_right(kernel, convolution_size - m);
+
+  fftw_complex* input_arr_in    = fftw_alloc_complex(convolution_size);
+  fftw_complex* kernel_arr_in   = fftw_alloc_complex(convolution_size);
+  fftw_complex* input_arr_out   = fftw_alloc_complex(convolution_size);
+  fftw_complex* kernel_arr_out  = fftw_alloc_complex(convolution_size);
+  fftw_complex* fixed_product   = fftw_alloc_complex(convolution_size);
+  fftw_complex* convolution_out = fftw_alloc_complex(convolution_size);
+
+  fftw_plan p1 = fftw_plan_dft_1d(convolution_size, input_arr_in, input_arr_out,
+                                  FFTW_FORWARD, FFTW_ESTIMATE);
+  fftw_plan p2 = fftw_plan_dft_1d(convolution_size, kernel_arr_in,
+                                  kernel_arr_out, FFTW_FORWARD, FFTW_ESTIMATE);
+  fftw_plan rev =
+      fftw_plan_dft_1d(convolution_size, fixed_product, convolution_out,
+                       FFTW_BACKWARD, FFTW_ESTIMATE);
+
+  for (std::size_t i = 0; i < convolution_size; ++i) {
+    input_arr_in[i][0]  = padded_input[i];
+    input_arr_in[i][1]  = 0.0;
+    kernel_arr_in[i][0] = padded_kernel[i];
+    kernel_arr_in[i][1] = 0.0;
+  }
+
+  fftw_execute(p1);
+  fftw_execute(p2);
+  const f64 mux = 1.0 / static_cast<f64>(convolution_size);
+  for (std::size_t i = 0; i < convolution_size; ++i) {
+    fixed_product[i][0] = (input_arr_out[i][0] * kernel_arr_out[i][0] -
+                           input_arr_out[i][1] * kernel_arr_out[i][1]) *
+                          mux;
+    fixed_product[i][1] = (input_arr_out[i][0] * kernel_arr_out[i][1] +
+                           input_arr_out[i][1] * kernel_arr_out[i][0]) *
+                          mux;
+  }
+
+  fftw_execute(rev);
+
+  std::vector<f64> ret(convolution_size);
+  for (std::size_t i = 0; i < convolution_size; ++i) {
+    ret[i] = convolution_out[i][0];
+  }
+
+  fftw_destroy_plan(p1);
+  fftw_destroy_plan(p2);
+  fftw_destroy_plan(rev);
+  fftw_free(input_arr_in);
+  fftw_free(input_arr_out);
+  fftw_free(kernel_arr_in);
+  fftw_free(kernel_arr_out);
+  fftw_free(fixed_product);
+  fftw_free(convolution_out);
   return ret;
 }
 #endif

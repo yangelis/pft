@@ -31,7 +31,7 @@ int main(int argc, char* argv[]) {
     std::vector<double> x_vec(xs, xs + n_of_points);
     std::vector<double> y_vec(ys, ys + n_of_points);
     auto savgol_coefs = utils::savgol_coeffs(33, 16, 16, 2, 3);
-    auto test = utils::convln(y_vec, savgol_coefs);
+    auto test         = utils::convln_use_r2c(y_vec, savgol_coefs);
 
     auto graph2 = new TGraph();
     for (size_t j = 0; j < test.size(); ++j) {
