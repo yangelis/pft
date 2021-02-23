@@ -21,6 +21,7 @@
 // ============================================================
 //
 // ChangeLog:
+//   0.0.9    print1<complex>, to_f64
 //   0.0.8    pad_right_until
 //   0.0.7    linspace, pad_left, pad_right
 //            zip_with, zip_to_pair
@@ -50,6 +51,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <complex>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring> // for memset
@@ -338,7 +340,11 @@ static inline StringView string_as_sv(const std::string& s) {
   return {s.data(), s.length()};
 }
 
-static inline i32 to_int(StringView s) { return std::stoi(std::string(s)); }
+static inline i32 to_i32(StringView s) { return std::stoi(std::string(s)); }
+
+static inline f64 to_f64(pft::StringView s) {
+  return std::stod(std::string(s));
+}
 
 static inline auto read_file_as_string_view(const char* filename)
     -> Maybe<StringView> {
@@ -387,12 +393,12 @@ static inline auto readlines(const char* filename, const char delim = '\n')
 
 static inline void ignore_header_lines(std::vector<StringView>& vec,
                                        int lines) {
-  vec.erase(vec.begin(), vec.begin() + lines);
+  vec.erase(std::begin(vec), std::begin(vec) + lines);
 }
 
 static inline auto as_floats(const std::vector<StringView>& vec)
-    -> std::vector<float> {
-  std::vector<float> buffer(vec.size());
+    -> std::vector<f32> {
+  std::vector<f32> buffer(vec.size());
 
   for (std::size_t i = 0; i < vec.size(); ++i) {
     buffer[i] = std::stof(std::string(vec[i]));
@@ -546,6 +552,9 @@ static inline void print1(FILE* stream, StringView view) {
   fwrite(view.data(), 1, view.size(), stream);
 }
 
+static inline void print1(FILE* stream, std::complex<f64> f) {
+  fprintf(stream, "{%8.4f, %8.4f}", f.real(), f.imag());
+}
 // NOTE: forward declare to use Maybe<std::vector>
 template <typename T>
 static inline void print1(FILE* stream, const std::vector<T>& v);
@@ -734,7 +743,7 @@ template <typename F, typename T,
 static inline auto map(F&& fn, const std::vector<T>& input) -> std::vector<R> {
   const auto size = input.size();
   std::vector<R> ret(size);
-  std::transform((std::begin(input)), (std::end(input)), std::begin(ret), fn);
+  std::transform(std::cbegin(input), std::cend(input), std::begin(ret), fn);
   return ret;
 }
 
@@ -765,7 +774,7 @@ static inline auto filter(F&& fn, const std::vector<T>& v) -> std::vector<T> {
 
 template <typename T>
 static inline void pop(std::vector<T>& vec, std::size_t elements) {
-  vec.erase(vec.begin(), vec.begin() + elements);
+  vec.erase(std::begin(vec), std::begin(vec) + elements);
 }
 
 template <typename T>
@@ -951,7 +960,7 @@ static inline auto abs(std::vector<T>& vec) {
 }
 
 template <typename T>
-static inline auto pad_right(const std::vector<T>& in, std::size_t padwidth = 1,
+static inline auto pad_right(const std::vector<T>& in, std::size_t padwidth,
                              T pad_value = 0) -> std::vector<T> {
   const auto out_size = padwidth + in.size();
   std::vector<T> out(out_size, pad_value);
@@ -972,7 +981,7 @@ static inline auto pad_right(const std::vector<T>& in, const Slice& slice)
 }
 
 template <typename T>
-static inline auto pad_left(const std::vector<T>& in, std::size_t padwidth = 1,
+static inline auto pad_left(const std::vector<T>& in, std::size_t padwidth,
                             T pad_value = 0) -> std::vector<T> {
   auto out = pad_right(in, padwidth, pad_value);
   std::rotate(std::begin(out), std::end(out) - padwidth, std::end(out));
@@ -980,7 +989,7 @@ static inline auto pad_left(const std::vector<T>& in, std::size_t padwidth = 1,
 }
 
 template <typename T>
-static inline auto pad(const std::vector<T>& in, std::size_t padwidth = 1,
+static inline auto pad(const std::vector<T>& in, std::size_t padwidth,
                        T pad_value = 0) -> std::vector<T> {
   const auto out_size = 2 * padwidth + in.size();
   std::vector<T> out(out_size, pad_value);

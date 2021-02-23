@@ -71,8 +71,8 @@ int main(int argc, char* argv[]) {
     boards[0].cells(3, 2) = State::Alive;
     boards[0].cells(3, 3) = State::Alive;
   } else if (argc == 3) {
-    Width           = pft::to_int(argv[1]);
-    Height          = pft::to_int(argv[2]);
+    Width           = pft::to_i32(argv[1]);
+    Height          = pft::to_i32(argv[2]);
     boards[0].cells = Cell{Height, Width};
     boards[1].cells = Cell{Height, Width};
     // randomize the state

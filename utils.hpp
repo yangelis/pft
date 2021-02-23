@@ -706,7 +706,7 @@ struct FFTW_C2R_1D {
     fftw_free(output_buffer);
   }
 
-  void set_input(const fftw_complex* buffer, std::size_t size) {
+  void set_input(const fftw_complex* buffer) {
     memcpy(input_buffer, buffer, sizeof(fftw_complex) * input_size);
   }
 
