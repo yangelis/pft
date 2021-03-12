@@ -68,6 +68,7 @@
 #include <TMath.h>
 #endif
 
+using c8 = char;
 // Unsigned
 using u8  = uint8_t;
 using u16 = uint16_t;
@@ -216,8 +217,8 @@ struct StringView : public std::string_view {
   StringView(const std::string_view& s) : std::string_view(s) {}
   StringView(std::string&& s) : std::string_view(std::move(s)) {}
   StringView(std::string_view&& s) : std::string_view(s) {}
-  StringView(const char* s) : std::string_view(s) {}
-  StringView(const char* s, std::size_t l) : std::string_view(s, l) {}
+  StringView(const c8* s) : std::string_view(s) {}
+  StringView(const c8* s, std::size_t l) : std::string_view(s, l) {}
 
   StringView chop(std::size_t n) {
     if (this->size() > n) {
@@ -227,7 +228,7 @@ struct StringView : public std::string_view {
     }
   }
 
-  StringView chop_by_delim(char delim) {
+  StringView chop_by_delim(c8 delim) {
     std::size_t i = 0;
     while (i < this->size() && this->data()[i] != delim) {
       ++i;
@@ -282,11 +283,11 @@ struct Particles_t {
 };
 
 // StringView utilities
-static inline StringView operator""_sv(const char* data, std::size_t count) {
+static inline StringView operator""_sv(const c8* data, std::size_t count) {
   return {data, count};
 }
 
-static inline StringView& trimr(StringView& s) {
+static inline auto trimr(StringView& s) -> StringView& {
   auto i = s.find_last_not_of(" \t\n\r\f\v");
   if (i != std::string_view::npos) {
     s = s.substr(0, i + 1);
@@ -295,7 +296,7 @@ static inline StringView& trimr(StringView& s) {
   return s;
 }
 
-static inline StringView& triml(StringView& s) {
+static inline auto triml(StringView& s) -> StringView& {
   auto i = s.find_first_not_of(" \t\n\r\f\v");
   if (i != std::string_view::npos) {
     s.remove_prefix(i);
@@ -304,7 +305,7 @@ static inline StringView& triml(StringView& s) {
   return s;
 }
 
-static inline auto split_by(StringView view, char delim)
+static inline auto split_by(StringView view, c8 delim)
     -> std::vector<StringView> {
   view = trimr(view);
   std::vector<StringView> ret;
@@ -320,7 +321,7 @@ static inline auto split_by(StringView view, char delim)
   return ret;
 }
 
-static inline auto split_by(std::string& str, char delim)
+static inline auto split_by(std::string& str, c8 delim)
     -> std::vector<StringView> {
   std::vector<StringView> vec;
   StringView temp{str};
@@ -332,21 +333,23 @@ static inline auto split_by(std::string& str, char delim)
   return vec;
 }
 
-static inline StringView cstr_as_sv(const char* cstr) {
+static inline auto cstr_as_sv(const c8* cstr) -> StringView {
   return {cstr, strlen(cstr)};
 }
 
-static inline StringView string_as_sv(const std::string& s) {
+static inline auto string_as_sv(const std::string& s) -> StringView {
   return {s.data(), s.length()};
 }
 
-static inline i32 to_i32(StringView s) { return std::stoi(std::string(s)); }
+static inline auto to_i32(StringView s) -> i32 {
+  return std::stoi(std::string(s));
+}
 
-static inline f64 to_f64(pft::StringView s) {
+static inline auto to_f64(pft::StringView s) -> f64 {
   return std::stod(std::string(s));
 }
 
-static inline auto read_file_as_string_view(const char* filename)
+static inline auto read_file_as_string_view(const c8* filename)
     -> Maybe<StringView> {
   FILE* f = fopen(filename, "rb");
   if (f == nullptr) {
@@ -379,11 +382,11 @@ static inline auto read_file_as_string_view(const char* filename)
   }
 
   fclose(f);
-  return Some(StringView{static_cast<const char*>(data),
+  return Some(StringView{static_cast<const c8*>(data),
                          static_cast<std::size_t>(size)});
 }
 
-static inline auto readlines(const char* filename, const char delim = '\n')
+static inline auto readlines(const c8* filename, const c8 delim = '\n')
     -> std::vector<StringView> {
 
   auto file   = read_file_as_string_view(filename);
@@ -529,11 +532,11 @@ struct Matrix {
 //////////////////////////////////////////////////
 // Printers
 //////////////////////////////////////////////////
-static inline void print1(FILE* stream, char x) { fputc(x, stream); }
-static inline void print1(FILE* stream, char* x) {
+static inline void print1(FILE* stream, c8 x) { fputc(x, stream); }
+static inline void print1(FILE* stream, c8* x) {
   fwrite(x, 1, std::strlen(x), stream);
 }
-static inline void print1(FILE* stream, const char* x) {
+static inline void print1(FILE* stream, const c8* x) {
   fwrite(x, 1, std::strlen(x), stream);
 }
 
@@ -592,7 +595,7 @@ static inline void print1(FILE* stream, const std::vector<T>& v) {
 
 // TODO: make pretty printer for matrices
 template <typename T>
-void print1(FILE* stream, const Matrix<T>& mat) {
+static inline void print1(FILE* stream, const Matrix<T>& mat) {
   for (std::size_t i = 0; i < mat.rows; ++i) {
     for (std::size_t j = 0; j < mat.cols; ++j) {
       print1(stream, mat(i, j));
@@ -624,7 +627,7 @@ template <typename... Args>
 
 // stolen from https://github.com/rexim/aids/blob/master/aids.hpp
 template <typename T, typename... Args>
-static auto unwrap_or_panic(Maybe<T> maybe, Args... args) -> T {
+static inline auto unwrap_or_panic(Maybe<T> maybe, Args... args) -> T {
   if (!maybe.has_value) {
     panic(args...);
   }
@@ -657,12 +660,13 @@ constexpr auto enumerate(T&& iterable) {
   return iterable_wrapper{std::forward<T>(iterable)};
 }
 
-template <typename F, typename T, typename U>
-static inline auto zip_with(F&& fn, const std::vector<T>& a,
-                            const std::vector<U>& b)
-    -> std::vector<decltype(fn(a[0], b[0]))> {
+template <typename F, typename T, typename U,
+          typename R = std::vector<decltype(
+              std::declval<F>()(std::declval<T>(), std::declval<U>()))>>
+constexpr static inline auto zip_with(F&& fn, const std::vector<T>& a,
+                                      const std::vector<U>& b) -> R {
   const std::size_t n = std::min(a.size(), b.size());
-  std::vector<decltype(fn(a[0], b[0]))> ret(n);
+  R ret(n);
   for (std::size_t i = 0; i < n; ++i) {
     ret[i] = fn(a[i], b[i]);
   }
@@ -742,8 +746,10 @@ template <typename F, typename T,
           typename R = decltype(std::declval<F>()(std::declval<T>()))>
 static inline auto map(F&& fn, const std::vector<T>& input) -> std::vector<R> {
   const auto size = input.size();
-  std::vector<R> ret(size);
-  std::transform(std::cbegin(input), std::cend(input), std::begin(ret), fn);
+  std::vector<R> ret;
+  ret.reserve(size);
+  std::transform(std::cbegin(input), std::cend(input), std::back_inserter(ret),
+                 fn);
   return ret;
 }
 
@@ -752,9 +758,10 @@ template <typename F, typename... Types,
 static inline auto map(F&& fn, const std::vector<Types>&... input)
     -> std::vector<R> {
   const auto size = GetVectorsSize(input...);
-  std::vector<R> ret(size);
+  std::vector<R> ret;
+  ret.reserve(size);
   for (std::size_t i = 0; i < size; ++i) {
-    ret[i] = fn(input[i]...);
+    ret.emplace_back(fn(input[i]...));
   }
   return ret;
 }
@@ -801,10 +808,13 @@ static inline auto take(const std::vector<T>& vec, const Slice& slice)
 template <typename T>
 static inline auto take(std::vector<T>&& vec, const pft::Slice& slice)
     -> std::vector<T> {
-  return std::vector<T>{
-      std::make_move_iterator(std::begin(vec)) + slice.start,
-      std::make_move_iterator(std::begin(vec)) +
-          std::min(static_cast<size_t>(slice.stop), vec.size())};
+  std::vector<T> ret;
+  ret.reserve(slice.size());
+  std::move(std::begin(vec) + slice.start,
+            std::begin(vec) +
+                std::min(static_cast<size_t>(slice.stop), vec.size()),
+            std::back_inserter(ret));
+  return ret;
 }
 
 template <typename T>
@@ -1082,89 +1092,9 @@ static inline auto argsort(const std::vector<T>& xs) -> std::vector<i32> {
   return idx;
 }
 
-//////////////////////////////////////////////////
-// Arg Parse
-//////////////////////////////////////////////////
-struct ArgOption {
-  std::string short_op;
-  std::string long_op;
-  std::string msg;
-  bool accepts_value;
-};
-
-struct AParse {
-  using Value = std::string;
-  std::size_t nArgs;
-  std::deque<char*> args;
-  std::vector<ArgOption> flags;
-  std::map<std::string, std::pair<ArgOption, std::string>> arg_table;
-
-  AParse(int argc, char** a) : nArgs(argc) {
-
-    for (std::size_t i = 0; i < nArgs; ++i) {
-      args.push_back(a[i]);
-    }
-  }
-
-  void PrintArgv() {
-    for (std::size_t i = 1; i < nArgs; ++i) {
-      // printf("%s\n", args[i]);
-    }
-  }
-
-  void Parse() {
-    if (nArgs == 1) {
-      PrintUsage();
-      return;
-    }
-
-    for (auto [i, arg] : ::pft::enumerate(args)) {
-      for (std::size_t j = 0; j < flags.size(); ++j) {
-        if (arg == flags[j].short_op || arg == flags[j].long_op) {
-          if (flags[j].accepts_value) {
-            if (i + 1 >= nArgs) {
-              fprintf(stderr, "Missing argument for flag `%s` \n", arg);
-              return;
-            } else {
-              arg_table.insert({flags[j].short_op, {flags[j], args[i + 1]}});
-              args.pop_front();
-            }
-          } else {
-            arg_table.insert({flags[j].short_op, {flags[j], ""}});
-            args.pop_front();
-            fprintf(stderr, "TODO: handle non-accepting value args\n");
-          }
-        }
-      }
-    }
-
-    // fprintf(stdout, "[DBG]: %zu\n", options.size());
-  }
-
-  void Add(ArgOption opt) { flags.push_back(opt); }
-
-  void PrintUsage() {
-    for (auto& op : flags) {
-      println(stdout, op.short_op, ", ", op.long_op, "\t:", op.msg);
-    }
-  }
-
-  Maybe<std::string> value_of(std::string flag) {
-    // TODO: check if flag exist
-    auto val = arg_table.find(flag);
-
-    if (val != arg_table.end()) {
-      println(stdout, "[DBG]: ", val->second.second.c_str());
-      return {val->second.first.accepts_value, val->second.second};
-    } else {
-      return {false, ""};
-    }
-  }
-};
-
 // sane mod function
 template <typename T>
-static inline auto mod(T a, T b) -> T {
+constexpr static inline auto mod(T a, T b) -> T {
   return (a % b + b) % b;
 }
 

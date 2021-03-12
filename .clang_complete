@@ -2,5 +2,6 @@
 -I/$ROOTSYS/include
 
 -Wall
+-Wshadow
 -Wextra
 -Wpedantic
