@@ -22,6 +22,9 @@
 //
 // ChangeLog:
 //   0.0.9    print1<complex>, to_f64
+//            max_elem_id, move_if, adjacent_transformN,
+//            adjacent_findN,
+//            remove AParse
 //   0.0.8    pad_right_until
 //   0.0.7    linspace, pad_left, pad_right
 //            zip_with, zip_to_pair
@@ -54,19 +57,12 @@
 #include <complex>
 #include <cstdio>
 #include <cstdlib>
-#include <cstring> // for memset
-#include <deque>
+#include <cstring>
 #include <limits>
-#include <map>
 #include <numeric>
 #include <string>
 #include <string_view>
 #include <vector>
-
-#ifdef PFT_USE_ROOT
-#include <TLorentzVector.h>
-#include <TMath.h>
-#endif
 
 using c8 = char;
 // Unsigned
@@ -155,6 +151,7 @@ std::vector<i32> operator==(const std::vector<T>& lhs, const T& elem) {
   }
   return ret;
 }
+
 namespace pft {
 
 //////////////////////////////////////////////////
@@ -179,7 +176,8 @@ struct Maybe {
 
   constexpr Maybe() : has_value(false) {}
   constexpr Maybe(bool f, T& val) : has_value(f), unwrap(val) {}
-  constexpr Maybe(bool f, T&& val) : has_value(f), unwrap(std::move(val)) {}
+  constexpr Maybe(bool f, T&& val) noexcept
+      : has_value(f), unwrap(std::move(val)) {}
 
   constexpr bool operator!=(const Maybe<T>& that) const {
     return !(*this == that);
@@ -220,7 +218,7 @@ struct StringView : public std::string_view {
   StringView(const c8* s) : std::string_view(s) {}
   StringView(const c8* s, std::size_t l) : std::string_view(s, l) {}
 
-  StringView chop(std::size_t n) {
+  auto chop(std::size_t n) -> StringView {
     if (this->size() > n) {
       return this->substr(n);
     } else {
@@ -228,7 +226,7 @@ struct StringView : public std::string_view {
     }
   }
 
-  StringView chop_by_delim(c8 delim) {
+  auto chop_by_delim(c8 delim) -> StringView {
     std::size_t i = 0;
     while (i < this->size() && this->data()[i] != delim) {
       ++i;
@@ -238,7 +236,7 @@ struct StringView : public std::string_view {
     return result;
   }
 
-  std::string as_string() const { return std::string(*this); }
+  auto as_string() const -> std::string { return std::string(*this); }
 };
 
 //////////////////////////////////////////////////
@@ -249,7 +247,7 @@ struct Particles_t {
   std::vector<f64> times, edep, energy, posX, posY, posZ;
   std::vector<f64> theta, phi, trlen;
 
-  void Reserve(const std::size_t nparticles) {
+  void Reserve(std::size_t nparticles) {
     det_id.reserve(nparticles);
     parent_id.reserve(nparticles);
     trid.reserve(nparticles);
@@ -356,7 +354,7 @@ static inline auto read_file_as_string_view(const c8* filename)
     return {};
   }
 
-  int err = fseek(f, 0, SEEK_END);
+  i32 err = fseek(f, 0, SEEK_END);
   if (err < 0) {
     return {};
   }
@@ -382,8 +380,8 @@ static inline auto read_file_as_string_view(const c8* filename)
   }
 
   fclose(f);
-  return Some(StringView{static_cast<const c8*>(data),
-                         static_cast<std::size_t>(size)});
+  return Some(
+      StringView{static_cast<const c8*>(data), static_cast<std::size_t>(size)});
 }
 
 static inline auto readlines(const c8* filename, const c8 delim = '\n')
@@ -395,7 +393,7 @@ static inline auto readlines(const c8* filename, const c8 delim = '\n')
 }
 
 static inline void ignore_header_lines(std::vector<StringView>& vec,
-                                       int lines) {
+                                       i32 lines) {
   vec.erase(std::begin(vec), std::begin(vec) + lines);
 }
 
@@ -638,6 +636,96 @@ static inline auto unwrap_or_panic(Maybe<T> maybe, Args... args) -> T {
 //////////////////////////////////////////////////
 // Utils
 //////////////////////////////////////////////////
+template <class InputIt, class OutputIt, class UnaryPred,
+          typename = typename std::enable_if_t<
+              std::is_convertible_v<
+                  typename std::iterator_traits<InputIt>::iterator_category,
+                  std::input_iterator_tag> &&
+              std::is_same_v<
+                  typename std::iterator_traits<OutputIt>::iterator_category,
+                  std::output_iterator_tag>>>
+constexpr static inline auto move_if(InputIt first, InputIt last,
+                                     OutputIt result, UnaryPred pred)
+    -> OutputIt {
+  auto left = last;
+  for (; first != last; ++first) {
+    if (pred(*first)) {
+      *result = std::move(*first);
+      std::swap(*first, *(--left));
+      ++result;
+    }
+  }
+  return result;
+}
+
+template <class Iter, std::size_t N, std::size_t... Is>
+constexpr static inline auto unpack_iters_impl(std::array<Iter, N>& arr,
+                                               std::index_sequence<Is...>)
+    -> decltype(std::tie(*arr[Is]...)) {
+  return std::tie(*arr[Is]...);
+}
+
+template <std::size_t N, class ForwardIt, class Predicate,
+          typename = typename std::enable_if_t<std::is_convertible_v<
+              typename std::iterator_traits<ForwardIt>::iterator_category,
+              std::forward_iterator_tag>>>
+constexpr static inline auto adjacent_findN(ForwardIt first, ForwardIt last,
+                                            Predicate pred) -> ForwardIt {
+  if (first != last) {
+    std::array<ForwardIt, N> iters;
+    for (std::size_t i = 0; i < N; ++i) {
+      iters[i] = std::next(first, i);
+    }
+
+    for (; iters.back() != last;
+         std::for_each(std::rbegin(iters), std::rend(iters),
+                       [](auto& x) { std::advance(x, 1); })) {
+      if (std::apply(pred,
+                     unpack_iters_impl(iters, std::make_index_sequence<N>{}))) {
+        return iters[0];
+      }
+    }
+  }
+  return last;
+}
+
+template <std::size_t N, class InputIt, class OutputIt, class Op,
+          typename = typename std::enable_if_t<
+              std::is_convertible_v<
+                  typename std::iterator_traits<InputIt>::iterator_category,
+                  std::input_iterator_tag> &&
+              std::is_same_v<
+                  typename std::iterator_traits<OutputIt>::iterator_category,
+                  std::output_iterator_tag>>>
+constexpr static inline auto adjacent_transformN(InputIt first, InputIt last,
+                                                 OutputIt result, Op op)
+    -> OutputIt {
+  if (first != last) {
+    using val_t = typename std::iterator_traits<InputIt>::value_type;
+    std::array<InputIt, N> iters;
+    for (std::size_t i = 0; i < N; ++i) {
+      iters[i] = std::next(first, i + 1);
+    }
+    val_t acc(*first);
+    *result = acc;
+
+    for ((void)++result; iters[N - 2] != last;
+         std::for_each(std::rbegin(iters), std::rend(iters),
+                       [](auto& x) { std::advance(x, 1); }),
+         (void)++result) {
+      const auto params = std::tuple_cat(
+          unpack_iters_impl(iters, std::make_index_sequence<N - 1>{}),
+          std::tie(acc));
+      val_t val(*iters[0]);
+
+      *result = std::apply(op, params);
+
+      acc = std::move(val);
+    }
+  }
+  return result;
+}
+
 // http://reedbeta.com/blog/python-like-enumerate-in-cpp17/
 template <typename T, typename TIter = decltype(std::begin(std::declval<T>())),
           typename = decltype(std::end(std::declval<T>()))>
@@ -663,12 +751,13 @@ constexpr auto enumerate(T&& iterable) {
 template <typename F, typename T, typename U,
           typename R = std::vector<decltype(
               std::declval<F>()(std::declval<T>(), std::declval<U>()))>>
-constexpr static inline auto zip_with(F&& fn, const std::vector<T>& a,
-                                      const std::vector<U>& b) -> R {
+static inline auto zip_with(F&& fn, const std::vector<T>& a,
+                            const std::vector<U>& b) -> R {
   const std::size_t n = std::min(a.size(), b.size());
-  R ret(n);
+  R ret;
+  ret.reserve(n);
   for (std::size_t i = 0; i < n; ++i) {
-    ret[i] = fn(a[i], b[i]);
+    ret.emplace_back(fn(a[i], b[i]));
   }
   return ret;
 }
@@ -753,6 +842,17 @@ static inline auto map(F&& fn, const std::vector<T>& input) -> std::vector<R> {
   return ret;
 }
 
+template <typename F, typename T,
+          typename R = decltype(std::declval<F>()(std::declval<T>()))>
+static inline auto map(F&& fn, std::vector<T>&& input) -> std::vector<R> {
+  std::vector<R> ret;
+  std::transform(std::make_move_iterator(std::begin(input)),
+                 std::make_move_iterator(std::end(input)), std::begin(input),
+                 std::forward<F>(fn));
+  ret = std::move(input);
+  return ret;
+}
+
 template <typename F, typename... Types,
           typename R = decltype(std::declval<F>()(std::declval<Types>()...))>
 static inline auto map(F&& fn, const std::vector<Types>&... input)
@@ -776,6 +876,15 @@ static inline auto filter(F&& fn, const std::vector<T>& v) -> std::vector<T> {
       ret.emplace_back(val);
     }
   }
+  return ret;
+}
+
+template <typename F, typename T>
+static inline auto filter(F&& fn, std::vector<T>&& v) -> std::vector<T> {
+  std::vector<T> ret;
+  move_if(std::begin(v), std::end(v), std::back_inserter(ret),
+          std::forward<F>(fn));
+  (void)std::exchange(v, {}); // "destroy" old vec
   return ret;
 }
 
@@ -1124,6 +1233,16 @@ static inline auto findall(Op&& fn, const std::vector<T>& h)
   return ret;
 }
 
+template <
+    class ForwardIt,
+    typename Id_t  = typename std::iterator_traits<ForwardIt>::difference_type,
+    typename Val_t = typename std::iterator_traits<ForwardIt>::value_type>
+constexpr static inline auto max_elem_id(ForwardIt first, ForwardIt last)
+    -> std::pair<Id_t, Val_t> {
+  const auto max_el = std::max_element(first, last);
+  const auto i_max  = std::distance(first, max_el);
+  return std::make_pair(i_max, *max_el);
+}
 } // namespace pft
 
 #endif // PFT_H_

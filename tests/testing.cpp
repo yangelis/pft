@@ -46,7 +46,7 @@ int main() {
   ////////////////////////////////////////////////
   {
     const auto xx       = pft::arange(0, 10);
-    const auto filtered = pft::filter([](const auto x) { return x > 5; }, xx);
+    const auto filtered = pft::filter([](auto x) { return x > 5; }, xx);
     for (std::size_t i = 0; i < filtered.size(); ++i) {
       assert(filtered[i] == static_cast<i32>(i) + 6);
     }
@@ -207,6 +207,24 @@ int main() {
     assert(check_chunk3);
 
     pft::println(stdout, "[PASSED] ", "chunking tests");
+  }
+
+  ////////////////////////////////////////////////
+  // adjacent_*
+  ////////////////////////////////////////////////
+  {
+    const std::vector<i32> v1{0, 1, 2, 3, 40, 40, 41, 41, 5};
+    std::vector<i32> res;
+    std::vector<i32> res2;
+    std::adjacent_difference(std::begin(v1), std::end(v1),
+                             std::back_inserter(res), std::plus{});
+    pft::adjacent_transformN<2>(std::begin(v1), std::end(v1),
+                                std::back_inserter(res2), std::plus{});
+
+    for (size_t i = 0; i < v1.size(); ++i) {
+      assert(res[i] == res[i]);
+    }
+    pft::println(stdout, "[PASSED] ", "adjacent_* tests");
   }
 
   return 0;
