@@ -5,7 +5,7 @@ ROOTCXXFLAGS  := $(shell root-config --cflags)
 ROOTLIBS      := $(shell root-config --ldflags --libs) -lCore -lMathCore
 ROOTEXAMPLES  := file2tree
 EXAMPLES_FFTW := peak_finding sg_filter ffts fftw_wrapper
-EXAMPLES      := matrix_test argparse readfile gol
+EXAMPLES      := matrix_test readfile gol
 
 .PHONY: all
 all: $(EXAMPLES) $(ROOTEXAMPLES) $(EXAMPLES_FFTW)
