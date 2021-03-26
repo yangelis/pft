@@ -12,6 +12,7 @@ AlwaysBreakTemplateDeclarations     : true
 ReflowComments                      : false
 TabWidth                            : 4
 PointerAlignment                    : Left
+BreakBeforeBraces                   : Custom
 BraceWrapping:
   AfterClass            : false
   AfterControlStatement : false
