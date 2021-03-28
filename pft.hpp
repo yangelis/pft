@@ -629,6 +629,9 @@ static inline void print1(FILE* stream, const std::pair<T, U>& pr)
 template <typename T>
 static inline void print1(FILE* stream, const Vec<T>& v)
 {
+  if (v.empty()) {
+    return;
+  }
   const std::size_t n = v.size();
   fprintf(stream, "vector(size=%zu) ", v.size());
   print1(stream, "{");
@@ -914,8 +917,8 @@ static inline auto map(F&& fn, Vec<T>&& input) -> Vec<R>
   Vec<R> ret;
   ret.reserve(input.size());
   std::transform(std::make_move_iterator(std::begin(input)),
-                 std::make_move_iterator(std::end(input)), std::begin(ret),
-                 std::forward<F>(fn));
+                 std::make_move_iterator(std::end(input)),
+                 std::back_inserter(ret), std::forward<F>(fn));
   return ret;
 }
 
