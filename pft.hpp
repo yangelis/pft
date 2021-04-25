@@ -977,7 +977,7 @@ static inline void drop(Vec<T>& vec, std::size_t elements)
 template <typename T>
 static inline auto take(const Vec<T>& vec, std::size_t elements) -> Vec<T>
 {
-  return {std::cbegin(vec), std::cend(vec) + elements};
+  return {std::cbegin(vec), std::cbegin(vec) + elements};
 }
 
 template <typename T>
