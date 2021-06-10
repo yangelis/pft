@@ -1,11 +1,13 @@
 CXXFLAGS      := -std=c++17 -I../ -Wall -Wextra -Wshadow \
                -Wpedantic -Wcast-align -ggdb -O0
+SANITIZE      := -fsanitize=address -fsanitize=leak -fsanitize=undefined
+SANITIZE_LIBS := -static-libasan
 LIBS          :=
-ROOTCXXFLAGS  := $(shell root-config --cflags)
-ROOTLIBS      := $(shell root-config --ldflags --libs) -lCore -lMathCore
+ROOTCXXFLAGS  := $(CXXFLAGS) $(shell root-config --cflags)
+ROOTLIBS      := $(LIBS) $(shell root-config --ldflags --libs) -lCore -lMathCore
 ROOTEXAMPLES  := file2tree
 EXAMPLES_FFTW := peak_finding sg_filter ffts fftw_wrapper
-EXAMPLES      := matrix_test readfile gol
+EXAMPLES      := matrix_test readfile gol placeholder
 
 .PHONY: all
 all: $(EXAMPLES) $(ROOTEXAMPLES) $(EXAMPLES_FFTW)
@@ -15,15 +17,19 @@ examples: $(EXAMPLES)
 
 $(EXAMPLES): %:%.cpp
 	@printf "# compiling $<\n"
-	$(CXX) $(CXXFLAGS) $< -o $@
+	$(CXX) $(CXXFLAGS) -fno-omit-frame-pointer -fsanitize=address -lrt $< -o $@
 
 $(ROOTEXAMPLES): %:%.cpp
 	@printf "# compiling $<\n"
-	$(CXX) $(CXXFLAGS) $(ROOTCXXFLAGS) $< -o $@ $(ROOTLIBS)
+	$(CXX) $(ROOTCXXFLAGS) $< -o $@ $(ROOTLIBS)
 
 $(EXAMPLES_FFTW): %: %.cpp
 	@printf "# compiling $<\n"
-	$(CXX) $(CXXFLAGS) $(ROOTCXXFLAGS) $< -o $@ $(ROOTLIBS) -lfftw3
+	$(CXX) $(ROOTCXXFLAGS) $< -o $@ $(ROOTLIBS) -lfftw3
+
+convolutions: convolutions.cpp
+	@printf "# compiling $<\n"
+	$(CXX) $(CXXFLAGS) $< -o $@ -lfftw3
 
 .PHONY: clean
 clean:
