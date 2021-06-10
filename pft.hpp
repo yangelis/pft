@@ -643,6 +643,22 @@ static inline void print1(FILE* stream, const Vec<T>& v)
   print1(stream, "}");
 }
 
+template <typename T, std::size_t N>
+static inline void print1(FILE* stream, const std::array<T, N>& v)
+{
+  if (v.empty()) {
+    return;
+  }
+  // fprintf(stream, "std::array(size=%zu) ", v.size());
+  print1(stream, "{");
+  for (std::size_t i = 0; i < N - 1; ++i) {
+    print1(stream, v[i]);
+    print1(stream, ", ");
+  }
+  print1(stream, v[N - 1]);
+  print1(stream, "}");
+}
+
 // TODO: make pretty printer for matrices
 template <typename T>
 static inline void print1(FILE* stream, const Matrix<T>& mat)
