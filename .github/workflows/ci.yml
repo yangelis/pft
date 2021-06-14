@@ -1,0 +1,30 @@
+name: CI
+on: [push, pull_request]
+
+jobs:
+  build-linux-gcc:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v1
+      - name: build
+        run: |
+          cd examples
+          make -B examples
+          cd ../tests
+          make -B
+        env:
+          CC: gcc-10
+          CXX: g++-10
+  build-linux-clang:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v1
+      - name: build
+        run: |
+          cd examples
+          make -B examples
+          cd ../tests
+          make -B
+        env:
+          CC: clang
+          CXX: clang++

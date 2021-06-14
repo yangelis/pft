@@ -1,2 +1,7 @@
 -std=c++17
 -I/$ROOTSYS/include
+
+-Wall
+-Wshadow
+-Wextra
+-Wpedantic

@@ -1,21 +1,44 @@
-ROOTCXXFLAGS := $(shell root-config --cflags)
-CXXFLAGS :=-I../ -Wall -Wextra -Werror -pedantic -ggdb -O0
-LIBS := $(shell root-config --ldflags --libs)
-#LIBS := -L/home/john/Programs/root6.22/lib -lCore -lMathCore
-EXAMPLES := file2tree matrix_test argparse
+CXXFLAGS      := -std=c++17 -I../ -Wall -Wextra -Wshadow \
+               -Wpedantic -Wcast-align -ggdb -O0
+SANITIZE      := -fsanitize=address -fsanitize=leak -fsanitize=undefined
+SANITIZE_LIBS := -static-libasan
+LIBS          :=
+ROOTCXXFLAGS  := $(CXXFLAGS) $(shell root-config --cflags)
+ROOTLIBS      := $(LIBS) $(shell root-config --ldflags --libs) -lCore -lMathCore
+ROOTEXAMPLES  := file2tree
+EXAMPLES_FFTW := peak_finding sg_filter ffts fftw_wrapper
+EXAMPLES      := matrix_test readfile gol
 
 .PHONY: all
-all: $(EXAMPLES)
+all: $(EXAMPLES) $(ROOTEXAMPLES) $(EXAMPLES_FFTW)
 
-file2tree: file2tree.cpp
-	$(CXX) $(CXXFLAGS) $(ROOTCXXFLAGS) file2tree.cpp -o file2tree $(LIBS)
+.PHONY: examples
+examples: $(EXAMPLES)
 
-matrix_test: matrix_test.cpp
-	$(CXX) $(CXXFLAGS) $(ROOTCXXFLAGS) matrix_test.cpp -o matrix_test $(LIBS)
+$(EXAMPLES): %:%.cpp
+	@printf "# compiling $<\n"
+	$(CXX) $(CXXFLAGS) -fno-omit-frame-pointer -fsanitize=address -lrt $< -o $@
 
-argparse: argparse.cpp
-	$(CXX) $(CXXFLAGS) --std=c++17 argparse.cpp -o argparse
+$(ROOTEXAMPLES): %:%.cpp
+	@printf "# compiling $<\n"
+	$(CXX) $(ROOTCXXFLAGS) $< -o $@ $(ROOTLIBS)
+
+$(EXAMPLES_FFTW): %: %.cpp
+	@printf "# compiling $<\n"
+	$(CXX) $(ROOTCXXFLAGS) $< -o $@ $(ROOTLIBS) -lfftw3
+
+convolutions: convolutions.cpp
+	@printf "# compiling $<\n"
+	$(CXX) $(CXXFLAGS) $< -o $@ -lfftw3
+
+placeholder: placeholder.cpp
+	@printf "# compiling $<\n"
+	$(CXX) $(CXXFLAGS) -fno-omit-frame-pointer -fsanitize=address -lrt $< -o $@
 
 .PHONY: clean
 clean:
-	rm -f *.o $(EXAMPLES) 
+	@printf "Cleaning executables\n"
+	rm -f *.o $(EXAMPLES)
+	rm -f *.o $(ROOTEXAMPLES)
+	rm -f *.o $(EXAMPLES_FFTW)
+	rm -f *.root
