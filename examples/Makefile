@@ -7,7 +7,7 @@ ROOTCXXFLAGS  := $(CXXFLAGS) $(shell root-config --cflags)
 ROOTLIBS      := $(LIBS) $(shell root-config --ldflags --libs) -lCore -lMathCore
 ROOTEXAMPLES  := file2tree
 EXAMPLES_FFTW := peak_finding sg_filter ffts fftw_wrapper
-EXAMPLES      := matrix_test readfile gol placeholder
+EXAMPLES      := matrix_test readfile gol
 
 .PHONY: all
 all: $(EXAMPLES) $(ROOTEXAMPLES) $(EXAMPLES_FFTW)
@@ -30,6 +30,10 @@ $(EXAMPLES_FFTW): %: %.cpp
 convolutions: convolutions.cpp
 	@printf "# compiling $<\n"
 	$(CXX) $(CXXFLAGS) $< -o $@ -lfftw3
+
+placeholder: placeholder.cpp
+	@printf "# compiling $<\n"
+	$(CXX) $(CXXFLAGS) -fno-omit-frame-pointer -fsanitize=address -lrt $< -o $@
 
 .PHONY: clean
 clean:
