@@ -21,6 +21,7 @@
 // ============================================================
 //
 // ChangeLog:
+//   0.0.10   is_in_range, is_in_range_lc, is_in_range_rc, is_in_range_c
 //   0.0.9    print1<complex>, to_f64, contains,
 //            max_id_and_val, move_if, adjacent_transformN,
 //            adjacent_findN, min_id_and_val
@@ -367,12 +368,12 @@ static inline auto string_as_sv(const std::string& s) -> StringView
 
 static inline auto to_i32(StringView s) -> i32
 {
-  return std::stoi(std::string(s));
+  return std::stoi(s.as_string());
 }
 
 static inline auto to_f64(pft::StringView s) -> f64
 {
-  return std::stod(std::string(s));
+  return std::stod(s.as_string());
 }
 
 static inline auto read_file_as_string_view(const c8* filename)
@@ -432,7 +433,7 @@ static inline auto as_floats(const Vec<StringView>& vec) -> Vec<f32>
   Vec<f32> buffer(vec.size());
 
   for (std::size_t i = 0; i < vec.size(); ++i) {
-    buffer[i] = std::stof(std::string(vec[i]));
+    buffer[i] = std::stof(vec[i].as_string());
   }
   return buffer;
 }
@@ -1367,6 +1368,30 @@ template <typename T>
 static inline bool contains(const Vec<T>& v, T e)
 {
   return std::find(std::cbegin(v), std::cend(v), e) != std::cend(v);
+}
+
+template <typename T>
+constexpr static inline bool is_in_range(T number, T low, T high)
+{
+  return low < number && number < high;
+}
+
+template <typename T>
+constexpr static inline bool is_in_range_lc(T number, T low, T high)
+{
+  return low <= number && number < high;
+}
+
+template <typename T>
+constexpr static inline bool is_in_range_rc(T number, T low, T high)
+{
+  return low < number && number <= high;
+}
+
+template <typename T>
+constexpr static inline bool is_in_range_c(T number, T low, T high)
+{
+  return low <= number && number <= high;
 }
 } // namespace pft
 

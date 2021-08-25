@@ -33,7 +33,7 @@ convolutions: convolutions.cpp
 
 placeholder: placeholder.cpp
 	@printf "# compiling $<\n"
-	$(CXX) $(CXXFLAGS) -fno-omit-frame-pointer -fsanitize=address -lrt $< -o $@
+	$(CXX) $(CXXFLAGS) -fno-omit-frame-pointer $(SANITIZE) -lrt $< -o $@
 
 .PHONY: clean
 clean:

@@ -1,4 +1,4 @@
-CXXFLAGS      := -std=c++17 -I../ -fno-exceptions -Wall -Wextra -Wshadow \
+CXXFLAGS      := -std=c++17 -I../ -Wall -Wextra -Wshadow \
                  -Wpedantic -Wcast-align -ggdb -O3
 SANITIZE      := -fsanitize=address -fsanitize=leak -fsanitize=undefined
 

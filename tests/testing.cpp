@@ -57,7 +57,7 @@ int main()
         pft::filter([](auto x) { return x > 0; }, std::move(xx2));
     // const auto filtered2 =
     //     pft::filter([](auto x) { return x > 0; }, xx2);
-//    pft::println(stdout, xx2);
+    //    pft::println(stdout, xx2);
     pft::println(stdout, "[PASSED] ", "filter tests");
   }
 
@@ -65,8 +65,8 @@ int main()
   // map
   ////////////////////////////////////////////////
   {
-    auto to_int    = [](pft::StringView x) { return std::stoi(std::string(x)); };
-    auto to_double = [](pft::StringView x) { return std::stod(std::string(x)); };
+    auto to_int    = [](pft::StringView x) { return std::stoi(x.as_string()); };
+    auto to_double = [](pft::StringView x) { return std::stod(x.as_string()); };
 
     const std::vector<pft::StringView> num_test = {"123.456", "9999.9",
                                                    "69.420"};

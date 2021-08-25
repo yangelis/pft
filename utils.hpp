@@ -74,7 +74,7 @@ static inline auto peak_prominences(const Vec<f64>& xs, const Vec<i32>& peaks,
   for (std::size_t pi = 0; pi < peaks_size; ++pi) {
     peak  = peaks[pi];
     i_min = 0;
-    i_max = xs.size() - 1;
+    i_max = static_cast<i32>(xs.size()) - 1;
 
     if (!(i_min <= peak && peak <= i_max)) {
       fprintf(stderr, "Oopsie\n");
@@ -186,14 +186,14 @@ template <typename T>
 static inline auto local_maxima(Vec<T> x)
     -> std::tuple<Vec<i32>, Vec<i32>, Vec<i32>>
 {
-  const std::size_t n = x.size();
+  const i32 n = static_cast<i32>(x.size());
   Vec<i32> midpoints(n / 2, 0);
   Vec<i32> left_edges(n / 2, 0);
   Vec<i32> right_edges(n / 2, 0);
   std::size_t m = 0; // index pointer to the end
 
-  std::size_t i = 1;
-  auto i_max    = n - 1;
+  i32 i           = 1;
+  const i32 i_max = n - 1;
 
   while (i < i_max) {
     if (x[i - 1] < x[i]) {
@@ -259,7 +259,7 @@ static inline auto select_peaks_by_distance(const Vec<i32>& peaks,
                                             f64 distance) -> Vec<i32>
 {
 
-  const i32 peaks_size = peaks.size();
+  const i32 peaks_size = static_cast<i32>(peaks.size());
 
   distance = ceil(distance);
   Vec<i32> keep(peaks_size, true);
@@ -376,7 +376,7 @@ static inline auto SG(i64 halfWindow, i64 polyDeg) -> pft::Matrix<T>
   auto m = SG.cols;
   for (std::size_t i = 0; i < n; ++i) {
     for (std::size_t j = 0; j < m; ++j) {
-      SG(i, j) *= factorial(i);
+      SG(i, j) *= factorial(static_cast<i64>(i));
     }
   }
 
@@ -524,7 +524,7 @@ struct LUdecomposition {
         d        = -d;
         vv[imax] = vv[k];
       }
-      indices[k] = imax;
+      indices[k] = static_cast<i32>(imax);
       if (lu(k, k) == 0.0) {
         lu(k, k) = tiny;
       }
@@ -564,7 +564,7 @@ struct LUdecomposition {
       x[i] = sum;
     }
 
-    for (i32 i = n - 1; i >= 0; --i) {
+    for (i32 i = static_cast<i32>(n) - 1; i >= 0; --i) {
       sum = x[i];
       for (j = i + 1; j < n; ++j) {
         sum -= lu(i, j) * x[j];
